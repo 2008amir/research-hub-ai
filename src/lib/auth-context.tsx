@@ -38,6 +38,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     ]);
     setProfile(profileData as Profile | null);
     setIsAdmin(!!roleData?.some((r) => r.role === "admin"));
+    // Track active day (idempotent via PK)
+    const today = new Date().toISOString().slice(0, 10);
+    supabase.from("active_days").upsert({ user_id: userId, day: today }, { onConflict: "user_id,day" }).then(() => {});
   };
 
   useEffect(() => {
