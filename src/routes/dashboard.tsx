@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Heart, MessageCircle, Menu, X, Search } from "lucide-react";
 import { RequireAuth } from "@/components/RequireAuth";
 import { TopBar } from "@/components/TopBar";
+import { ChatWidget } from "@/components/ChatWidget";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
