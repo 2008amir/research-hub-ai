@@ -132,7 +132,7 @@ function SignInForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
-        <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+        <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password" className="glass" />
         {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
       </div>
