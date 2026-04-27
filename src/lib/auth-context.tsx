@@ -38,39 +38,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rolesError, setRolesError] = useState<string | null>(null);
   const loadRequestRef = useRef(0);
 
-  const loadRolesWithRetry = async (userId: string, requestId: number, attempt = 0): Promise<void> => {
-    const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+  const loadAuthStateWithRetry = async (requestId: number, attempt = 0): Promise<void> => {
+    const { data, error } = await supabase.rpc("get_my_auth_state" as never);
     if (loadRequestRef.current !== requestId) return;
     if (error && attempt < ROLE_RETRY_DELAYS.length) {
       await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
-      return loadRolesWithRetry(userId, requestId, attempt + 1);
+      return loadAuthStateWithRetry(requestId, attempt + 1);
     }
     if (error) {
+      setProfile(null);
       setIsAdmin(false);
       setRolesError("We couldn't verify your access. Please retry.");
       setRolesLoaded(true);
       return;
     }
-    setIsAdmin(Boolean(data));
+    const authState = Array.isArray(data) ? data[0] : null;
+    setProfile((authState?.profile as Profile | null) ?? null);
+    setIsAdmin(Boolean(authState?.is_admin));
     setRolesError(null);
     setRolesLoaded(true);
-  };
-
-  const loadProfileWithRetry = async (userId: string, requestId: number, attempt = 0): Promise<void> => {
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-    if (loadRequestRef.current !== requestId) return;
-    if (error && attempt < ROLE_RETRY_DELAYS.length) {
-      await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
-      return loadProfileWithRetry(userId, requestId, attempt + 1);
-    }
-    setProfile(data as Profile | null);
   };
 
   const loadUserData = async (currentUser: User) => {
     const requestId = ++loadRequestRef.current;
     setRolesLoaded(false);
     setRolesError(null);
-    await Promise.allSettled([loadProfileWithRetry(currentUser.id, requestId), loadRolesWithRetry(currentUser.id, requestId)]);
+    await loadAuthStateWithRetry(requestId);
     const today = new Date().toISOString().slice(0, 10);
     supabase.from("active_days").upsert({ user_id: currentUser.id, day: today }, { onConflict: "user_id,day" }).then(() => {});
   };
