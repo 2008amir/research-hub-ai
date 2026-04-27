@@ -29,13 +29,16 @@ const signUpSchema = z.object({
 }).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] });
 
 export function AuthScreen() {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, profile, loading } = useAuth();
   const navigate = useNavigate();
   const [authMode, setAuthMode] = useState("signin");
 
   useEffect(() => {
-    if (!loading && user) navigate({ to: isAdmin ? "/admin" : "/dashboard" });
-  }, [user, isAdmin, loading, navigate]);
+    // Wait for both user AND profile/role to load before redirecting,
+    // otherwise admins get sent to /dashboard before isAdmin is true.
+    if (loading || !user || !profile) return;
+    navigate({ to: isAdmin ? "/admin" : "/dashboard" });
+  }, [user, isAdmin, profile, loading, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col">
