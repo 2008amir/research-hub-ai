@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Search, User, LogOut } from "lucide-react";
+import { Search, User, LogOut, Bell } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
+import { cn } from "@/lib/utils";
 
 type Props = {
   search: string;
@@ -19,6 +20,19 @@ export function TopBar({ search, onSearchChange, homeTo, profileTo }: Props) {
   const { profile, user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const initials = ((profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")).toUpperCase() || (user?.email?.[0]?.toUpperCase() ?? "U");
+
+  // Notifications: 3 unread for new sessions, persisted per-user, cleared on click
+  const storageKey = user ? `notif_read_${user.id}` : null;
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!storageKey) return;
+    const read = typeof window !== "undefined" && window.localStorage.getItem(storageKey) === "1";
+    setUnread(read ? 0 : 3);
+  }, [storageKey]);
+  const clearNotifications = () => {
+    if (storageKey && typeof window !== "undefined") window.localStorage.setItem(storageKey, "1");
+    setUnread(0);
+  };
 
   return (
     <header className="sticky top-0 z-30 glass-strong border-b border-border">
@@ -33,6 +47,22 @@ export function TopBar({ search, onSearchChange, homeTo, profileTo }: Props) {
             className="pl-9 glass"
           />
         </div>
+        <button
+          onClick={clearNotifications}
+          className="relative h-9 w-9 rounded-full glass inline-flex items-center justify-center hover:bg-muted/50 transition"
+          aria-label={unread > 0 ? `${unread} unread notifications` : "Notifications"}
+        >
+          <Bell className="h-4 w-4" />
+          {unread > 0 && (
+            <span className={cn(
+              "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full",
+              "gradient-bg text-primary-foreground text-[10px] font-bold",
+              "inline-flex items-center justify-center"
+            )}>
+              {unread}
+            </span>
+          )}
+        </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="rounded-full ring-2 ring-border hover:ring-primary transition">

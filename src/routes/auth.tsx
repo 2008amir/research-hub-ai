@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Logo } from "@/components/Logo";
 import { CountrySelect } from "@/components/CountrySelect";
+import { PasswordInput, isStrongPassword } from "@/components/PasswordInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
@@ -33,7 +34,7 @@ const signUpSchema = z.object({
   username: z.string().trim().min(3, "Min 3 chars").max(30).regex(/^[a-zA-Z0-9_]+$/, "Letters, numbers, _ only"),
   email: z.string().trim().email("Invalid email").max(255),
   country: z.string().min(1, "Select a country"),
-  password: z.string().min(6, "Min 6 chars").max(72),
+  password: z.string().refine(isStrongPassword, { message: "Password doesn't meet all requirements" }),
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] });
 
@@ -131,7 +132,7 @@ function SignInForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">Password</Label>
-        <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+        <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password" className="glass" />
         {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
       </div>
@@ -234,12 +235,12 @@ function SignUpForm() {
       <div className="grid grid-cols-1 gap-3">
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" value={form.password} onChange={set("password")} className="glass" />
+          <PasswordInput id="password" value={form.password} onChange={set("password")} className="glass" showStrength />
           {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirmPassword">Confirm password</Label>
-          <Input id="confirmPassword" type="password" value={form.confirmPassword} onChange={set("confirmPassword")} className="glass" />
+          <PasswordInput id="confirmPassword" value={form.confirmPassword} onChange={set("confirmPassword")} className="glass" />
           {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword}</p>}
         </div>
       </div>
