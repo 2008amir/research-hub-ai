@@ -44,14 +44,31 @@ export function AuthScreen() {
       </header>
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md glass-strong rounded-2xl p-6 md:p-8">
-          <Tabs value={authMode} onValueChange={setAuthMode} className="w-full">
-            <TabsList className="grid w-full grid-cols-2 bg-muted/30">
-              <TabsTrigger value="signin" type="button">Sign in</TabsTrigger>
-              <TabsTrigger value="signup" type="button">Create account</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin" className="mt-6"><SignInForm /></TabsContent>
-            <TabsContent value="signup" className="mt-6"><SignUpForm /></TabsContent>
-          </Tabs>
+          <div className="w-full">
+            <div className="grid w-full grid-cols-2 gap-1 rounded-lg bg-muted/30 p-1">
+              <button
+                type="button"
+                onClick={() => setAuthMode("signin")}
+                className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+                  authMode === "signin" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Sign in
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthMode("signup")}
+                className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all ${
+                  authMode === "signup" ? "bg-background text-foreground shadow" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Create account
+              </button>
+            </div>
+            <div className="mt-6">
+              {authMode === "signin" ? <SignInForm /> : <SignUpForm />}
+            </div>
+          </div>
         </div>
       </main>
     </div>
