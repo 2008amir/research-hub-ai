@@ -24,7 +24,12 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
 };
 
-const ROLE_RETRY_DELAYS = [350, 800];
+type AuthStateRow = {
+  profile: Profile | null;
+  is_admin: boolean;
+};
+
+const ROLE_RETRY_DELAYS = [200, 450, 900];
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -38,40 +43,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rolesError, setRolesError] = useState<string | null>(null);
   const loadRequestRef = useRef(0);
 
-  const loadRolesWithRetry = async (userId: string, requestId: number, attempt = 0): Promise<void> => {
-    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+  const loadAuthStateWithRetry = async (requestId: number, attempt = 0): Promise<void> => {
+    const { data, error } = await supabase.rpc("get_my_auth_state" as never);
     if (loadRequestRef.current !== requestId) return;
     if (error && attempt < ROLE_RETRY_DELAYS.length) {
       await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
-      return loadRolesWithRetry(userId, requestId, attempt + 1);
+      return loadAuthStateWithRetry(requestId, attempt + 1);
     }
     if (error) {
+      setProfile(null);
+      setIsAdmin(false);
       setRolesError("We couldn't verify your access. Please retry.");
       setRolesLoaded(true);
       return;
     }
-    setIsAdmin(!!data?.some((r) => r.role === "admin"));
+    const rows = data as unknown as AuthStateRow[] | null;
+    const authState = rows?.[0] ?? null;
+    setProfile((authState?.profile as Profile | null) ?? null);
+    setIsAdmin(Boolean(authState?.is_admin));
     setRolesError(null);
     setRolesLoaded(true);
   };
 
-  const loadProfileWithRetry = async (userId: string, requestId: number, attempt = 0): Promise<void> => {
-    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-    if (loadRequestRef.current !== requestId) return;
-    if (error && attempt < ROLE_RETRY_DELAYS.length) {
-      await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
-      return loadProfileWithRetry(userId, requestId, attempt + 1);
-    }
-    setProfile(data as Profile | null);
-  };
-
-  const loadUserData = async (userId: string) => {
+  const loadUserData = async (currentUser: User) => {
     const requestId = ++loadRequestRef.current;
     setRolesLoaded(false);
     setRolesError(null);
-    await Promise.allSettled([loadProfileWithRetry(userId, requestId), loadRolesWithRetry(userId, requestId)]);
+    await loadAuthStateWithRetry(requestId);
     const today = new Date().toISOString().slice(0, 10);
-    supabase.from("active_days").upsert({ user_id: userId, day: today }, { onConflict: "user_id,day" }).then(() => {});
+    supabase.from("active_days").upsert({ user_id: currentUser.id, day: today }, { onConflict: "user_id,day" }).then(() => {});
   };
 
   useEffect(() => {
@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (sess?.user) {
         setRolesLoaded(false);
         setRolesError(null);
-        void loadUserData(sess.user.id);
+        void loadUserData(sess.user);
       } else {
         loadRequestRef.current += 1;
         setProfile(null);
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
-        loadUserData(sess.user.id).finally(() => setLoading(false));
+        loadUserData(sess.user).finally(() => setLoading(false));
       } else {
         setRolesLoaded(true);
         setLoading(false);
@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshProfile = async () => {
-    if (user) await loadUserData(user.id);
+    if (user) await loadUserData(user);
   };
 
   const signOut = async () => {

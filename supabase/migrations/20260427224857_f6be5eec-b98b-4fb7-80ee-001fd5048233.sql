@@ -1,0 +1,27 @@
+REVOKE EXECUTE ON FUNCTION public.get_my_auth_state() FROM PUBLIC, anon;
+
+CREATE OR REPLACE FUNCTION public.get_my_auth_state()
+RETURNS TABLE(profile jsonb, is_admin boolean)
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+  SELECT
+    (
+      SELECT to_jsonb(p)
+      FROM public.profiles p
+      WHERE p.id = auth.uid()
+    ) AS profile,
+    EXISTS (
+      SELECT 1
+      FROM public.user_roles ur
+      WHERE ur.user_id = auth.uid()
+        AND ur.role = 'admin'::public.app_role
+    ) AS is_admin;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.get_my_auth_state() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_my_auth_state() TO authenticated;
+
+REVOKE EXECUTE ON FUNCTION public.has_role(uuid, public.app_role) FROM PUBLIC, anon;
