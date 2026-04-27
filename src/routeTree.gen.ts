@@ -12,8 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResearchIdRouteImport } from './routes/research.$id'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as AdminResearchRouteImport } from './routes/admin.research'
+import { Route as AdminResearchNewRouteImport } from './routes/admin.research.new'
 
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
@@ -30,6 +34,11 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -40,39 +49,95 @@ const ResearchIdRoute = ResearchIdRouteImport.update({
   path: '/research/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminResearchRoute = AdminResearchRouteImport.update({
+  id: '/research',
+  path: '/research',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminResearchNewRoute = AdminResearchNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => AdminResearchRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
+  '/admin/research': typeof AdminResearchRouteWithChildren
+  '/admin/users': typeof AdminUsersRoute
   '/research/$id': typeof ResearchIdRoute
+  '/admin/research/new': typeof AdminResearchNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
+  '/admin/research': typeof AdminResearchRouteWithChildren
+  '/admin/users': typeof AdminUsersRoute
   '/research/$id': typeof ResearchIdRoute
+  '/admin/research/new': typeof AdminResearchNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
+  '/admin/research': typeof AdminResearchRouteWithChildren
+  '/admin/users': typeof AdminUsersRoute
   '/research/$id': typeof ResearchIdRoute
+  '/admin/research/new': typeof AdminResearchNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/profile' | '/research/$id'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/dashboard'
+    | '/profile'
+    | '/admin/research'
+    | '/admin/users'
+    | '/research/$id'
+    | '/admin/research/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/profile' | '/research/$id'
-  id: '__root__' | '/' | '/auth' | '/dashboard' | '/profile' | '/research/$id'
+  to:
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/dashboard'
+    | '/profile'
+    | '/admin/research'
+    | '/admin/users'
+    | '/research/$id'
+    | '/admin/research/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/auth'
+    | '/dashboard'
+    | '/profile'
+    | '/admin/research'
+    | '/admin/users'
+    | '/research/$id'
+    | '/admin/research/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
   ProfileRoute: typeof ProfileRoute
@@ -102,6 +167,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -116,11 +188,57 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResearchIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/research': {
+      id: '/admin/research'
+      path: '/research'
+      fullPath: '/admin/research'
+      preLoaderRoute: typeof AdminResearchRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/research/new': {
+      id: '/admin/research/new'
+      path: '/new'
+      fullPath: '/admin/research/new'
+      preLoaderRoute: typeof AdminResearchNewRouteImport
+      parentRoute: typeof AdminResearchRoute
+    }
   }
 }
 
+interface AdminResearchRouteChildren {
+  AdminResearchNewRoute: typeof AdminResearchNewRoute
+}
+
+const AdminResearchRouteChildren: AdminResearchRouteChildren = {
+  AdminResearchNewRoute: AdminResearchNewRoute,
+}
+
+const AdminResearchRouteWithChildren = AdminResearchRoute._addFileChildren(
+  AdminResearchRouteChildren,
+)
+
+interface AdminRouteChildren {
+  AdminResearchRoute: typeof AdminResearchRouteWithChildren
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminResearchRoute: AdminResearchRouteWithChildren,
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
   ProfileRoute: ProfileRoute,
