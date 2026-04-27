@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -41,6 +41,7 @@ const signUpSchema = z.object({
 function AuthPage() {
   const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
+  const [authMode, setAuthMode] = useState("signin");
 
   useEffect(() => {
     if (!loading && user) navigate({ to: isAdmin ? "/admin" : "/dashboard" });
@@ -53,7 +54,7 @@ function AuthPage() {
       </header>
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md glass-strong rounded-2xl p-6 md:p-8">
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs value={authMode} onValueChange={setAuthMode} className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-muted/30">
               <TabsTrigger value="signin">Sign in</TabsTrigger>
               <TabsTrigger value="signup">Create account</TabsTrigger>
@@ -61,9 +62,6 @@ function AuthPage() {
             <TabsContent value="signin" className="mt-6"><SignInForm /></TabsContent>
             <TabsContent value="signup" className="mt-6"><SignUpForm /></TabsContent>
           </Tabs>
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            <Link to="/" className="hover:text-foreground">← Back to home</Link>
-          </p>
         </div>
       </main>
     </div>
