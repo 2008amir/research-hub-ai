@@ -235,12 +235,12 @@ function SignUpForm() {
       <div className="grid grid-cols-1 gap-3">
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" value={form.password} onChange={set("password")} className="glass" />
+          <PasswordInput id="password" value={form.password} onChange={set("password")} className="glass" showStrength />
           {errors.password && <p className="text-xs text-destructive">{errors.password}</p>}
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirmPassword">Confirm password</Label>
-          <Input id="confirmPassword" type="password" value={form.confirmPassword} onChange={set("confirmPassword")} className="glass" />
+          <PasswordInput id="confirmPassword" value={form.confirmPassword} onChange={set("confirmPassword")} className="glass" />
           {errors.confirmPassword && <p className="text-xs text-destructive">{errors.confirmPassword}</p>}
         </div>
       </div>
