@@ -34,7 +34,7 @@ const signUpSchema = z.object({
   username: z.string().trim().min(3, "Min 3 chars").max(30).regex(/^[a-zA-Z0-9_]+$/, "Letters, numbers, _ only"),
   email: z.string().trim().email("Invalid email").max(255),
   country: z.string().min(1, "Select a country"),
-  password: z.string().min(6, "Min 6 chars").max(72),
+  password: z.string().refine(isStrongPassword, { message: "Password doesn't meet all requirements" }),
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] });
 
