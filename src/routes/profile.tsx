@@ -134,7 +134,7 @@ function ProfilePage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="password">New password (optional)</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="glass" placeholder="Leave blank to keep current" />
+            <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} className="glass" placeholder="Leave blank to keep current" showStrength={password.length > 0} />
           </div>
 
           <Button type="submit" disabled={saving} className="w-full gradient-bg text-primary-foreground hover:opacity-90 glow">
