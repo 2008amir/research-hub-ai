@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResearchIdRouteImport } from './routes/research.$id'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminResearchRouteImport } from './routes/admin.research'
+import { Route as AdminChatRouteImport } from './routes/admin.chat'
 import { Route as AdminResearchNewRouteImport } from './routes/admin.research.new'
 
 const ProfileRoute = ProfileRouteImport.update({
@@ -53,6 +54,11 @@ const AdminResearchRoute = AdminResearchRouteImport.update({
   path: '/research',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminChatRoute = AdminChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminResearchNewRoute = AdminResearchNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
+  '/admin/chat': typeof AdminChatRoute
   '/admin/research': typeof AdminResearchRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/research/$id': typeof ResearchIdRoute
@@ -74,6 +81,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
+  '/admin/chat': typeof AdminChatRoute
   '/admin/research': typeof AdminResearchRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/research/$id': typeof ResearchIdRoute
@@ -85,6 +93,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
+  '/admin/chat': typeof AdminChatRoute
   '/admin/research': typeof AdminResearchRouteWithChildren
   '/admin/users': typeof AdminUsersRoute
   '/research/$id': typeof ResearchIdRoute
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/profile'
+    | '/admin/chat'
     | '/admin/research'
     | '/admin/users'
     | '/research/$id'
@@ -107,6 +117,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/profile'
+    | '/admin/chat'
     | '/admin/research'
     | '/admin/users'
     | '/research/$id'
@@ -117,6 +128,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/profile'
+    | '/admin/chat'
     | '/admin/research'
     | '/admin/users'
     | '/research/$id'
@@ -182,6 +194,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminResearchRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/chat': {
+      id: '/admin/chat'
+      path: '/chat'
+      fullPath: '/admin/chat'
+      preLoaderRoute: typeof AdminChatRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/research/new': {
       id: '/admin/research/new'
       path: '/new'
@@ -205,11 +224,13 @@ const AdminResearchRouteWithChildren = AdminResearchRoute._addFileChildren(
 )
 
 interface AdminRouteChildren {
+  AdminChatRoute: typeof AdminChatRoute
   AdminResearchRoute: typeof AdminResearchRouteWithChildren
   AdminUsersRoute: typeof AdminUsersRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminChatRoute: AdminChatRoute,
   AdminResearchRoute: AdminResearchRouteWithChildren,
   AdminUsersRoute: AdminUsersRoute,
 }
@@ -226,3 +247,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
