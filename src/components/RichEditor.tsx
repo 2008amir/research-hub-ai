@@ -3,7 +3,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
 import Underline from "@tiptap/extension-underline";
-import TextStyle from "@tiptap/extension-text-style";
+import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import { useEffect } from "react";
 import { Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, List, ListOrdered, Link as LinkIcon, Image as ImageIcon, Quote, Undo, Redo } from "lucide-react";
