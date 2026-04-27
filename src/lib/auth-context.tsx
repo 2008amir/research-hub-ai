@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Session, User } from "@supabase/supabase-js";
 
@@ -19,9 +19,12 @@ type AuthContextValue = {
   isAdmin: boolean;
   loading: boolean;
   rolesLoaded: boolean;
+  rolesError: string | null;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
+
+const ROLE_RETRY_DELAYS = [350, 800];
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -32,30 +35,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
   const [rolesLoaded, setRolesLoaded] = useState(false);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+  const loadRequestRef = useRef(0);
 
-  const loadRolesWithRetry = async (userId: string, attempt = 0): Promise<void> => {
+  const loadRolesWithRetry = async (userId: string, requestId: number, attempt = 0): Promise<void> => {
     const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-    if (error && attempt < 5) {
-      // Transient DB error (e.g. 503 recovery) — retry with backoff
-      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
-      return loadRolesWithRetry(userId, attempt + 1);
+    if (loadRequestRef.current !== requestId) return;
+    if (error && attempt < ROLE_RETRY_DELAYS.length) {
+      await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
+      return loadRolesWithRetry(userId, requestId, attempt + 1);
+    }
+    if (error) {
+      setRolesError("We couldn't verify your access. Please retry.");
+      setRolesLoaded(true);
+      return;
     }
     setIsAdmin(!!data?.some((r) => r.role === "admin"));
+    setRolesError(null);
     setRolesLoaded(true);
   };
 
-  const loadProfileWithRetry = async (userId: string, attempt = 0): Promise<void> => {
+  const loadProfileWithRetry = async (userId: string, requestId: number, attempt = 0): Promise<void> => {
     const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-    if (error && attempt < 5) {
-      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
-      return loadProfileWithRetry(userId, attempt + 1);
+    if (loadRequestRef.current !== requestId) return;
+    if (error && attempt < ROLE_RETRY_DELAYS.length) {
+      await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
+      return loadProfileWithRetry(userId, requestId, attempt + 1);
     }
     setProfile(data as Profile | null);
   };
 
   const loadUserData = async (userId: string) => {
+    const requestId = ++loadRequestRef.current;
     setRolesLoaded(false);
-    await Promise.all([loadProfileWithRetry(userId), loadRolesWithRetry(userId)]);
+    setRolesError(null);
+    await Promise.allSettled([loadProfileWithRetry(userId, requestId), loadRolesWithRetry(userId, requestId)]);
     const today = new Date().toISOString().slice(0, 10);
     supabase.from("active_days").upsert({ user_id: userId, day: today }, { onConflict: "user_id,day" }).then(() => {});
   };
@@ -65,10 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
-        setTimeout(() => loadUserData(sess.user.id), 0);
+        setRolesLoaded(false);
+        setRolesError(null);
+        void loadUserData(sess.user.id);
       } else {
+        loadRequestRef.current += 1;
         setProfile(null);
         setIsAdmin(false);
+        setRolesError(null);
         setRolesLoaded(false);
       }
     });
@@ -97,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, isAdmin, loading, rolesLoaded, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, isAdmin, loading, rolesLoaded, rolesError, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
