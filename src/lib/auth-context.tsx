@@ -24,6 +24,11 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
 };
 
+type AuthStateRow = {
+  profile: Profile | null;
+  is_admin: boolean;
+};
+
 const ROLE_RETRY_DELAYS = [200, 450, 900];
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -52,7 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRolesLoaded(true);
       return;
     }
-    const authState = Array.isArray(data) ? data[0] : null;
+    const rows = data as unknown as AuthStateRow[] | null;
+    const authState = rows?.[0] ?? null;
     setProfile((authState?.profile as Profile | null) ?? null);
     setIsAdmin(Boolean(authState?.is_admin));
     setRolesError(null);
