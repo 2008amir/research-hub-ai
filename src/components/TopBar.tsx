@@ -21,6 +21,19 @@ export function TopBar({ search, onSearchChange, homeTo, profileTo }: Props) {
   const navigate = useNavigate();
   const initials = ((profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")).toUpperCase() || (user?.email?.[0]?.toUpperCase() ?? "U");
 
+  // Notifications: 3 unread for new sessions, persisted per-user, cleared on click
+  const storageKey = user ? `notif_read_${user.id}` : null;
+  const [unread, setUnread] = useState(0);
+  useEffect(() => {
+    if (!storageKey) return;
+    const read = typeof window !== "undefined" && window.localStorage.getItem(storageKey) === "1";
+    setUnread(read ? 0 : 3);
+  }, [storageKey]);
+  const clearNotifications = () => {
+    if (storageKey && typeof window !== "undefined") window.localStorage.setItem(storageKey, "1");
+    setUnread(0);
+  };
+
   return (
     <header className="sticky top-0 z-30 glass-strong border-b border-border">
       <div className="container mx-auto px-4 h-16 flex items-center gap-3">
