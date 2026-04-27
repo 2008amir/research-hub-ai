@@ -31,40 +31,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [rolesLoaded, setRolesLoaded] = useState(false);
+
+  const loadRolesWithRetry = async (userId: string, attempt = 0): Promise<void> => {
+    const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
+    if (error && attempt < 5) {
+      // Transient DB error (e.g. 503 recovery) — retry with backoff
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+      return loadRolesWithRetry(userId, attempt + 1);
+    }
+    setIsAdmin(!!data?.some((r) => r.role === "admin"));
+    setRolesLoaded(true);
+  };
+
+  const loadProfileWithRetry = async (userId: string, attempt = 0): Promise<void> => {
+    const { data, error } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
+    if (error && attempt < 5) {
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt)));
+      return loadProfileWithRetry(userId, attempt + 1);
+    }
+    setProfile(data as Profile | null);
+  };
 
   const loadUserData = async (userId: string) => {
-    const [{ data: profileData }, { data: roleData }] = await Promise.all([
-      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", userId),
-    ]);
-    setProfile(profileData as Profile | null);
-    setIsAdmin(!!roleData?.some((r) => r.role === "admin"));
-    // Track active day (idempotent via PK)
+    setRolesLoaded(false);
+    await Promise.all([loadProfileWithRetry(userId), loadRolesWithRetry(userId)]);
     const today = new Date().toISOString().slice(0, 10);
     supabase.from("active_days").upsert({ user_id: userId, day: today }, { onConflict: "user_id,day" }).then(() => {});
   };
 
   useEffect(() => {
-    // Set up listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, sess) => {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
-        // Defer DB calls
         setTimeout(() => loadUserData(sess.user.id), 0);
       } else {
         setProfile(null);
         setIsAdmin(false);
+        setRolesLoaded(false);
       }
     });
 
-    // THEN check existing session
     supabase.auth.getSession().then(({ data: { session: sess } }) => {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
         loadUserData(sess.user.id).finally(() => setLoading(false));
       } else {
+        setRolesLoaded(true);
         setLoading(false);
       }
     });
@@ -82,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, isAdmin, loading, refreshProfile, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, isAdmin, loading, rolesLoaded, refreshProfile, signOut }}>
       {children}
     </AuthContext.Provider>
   );
