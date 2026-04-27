@@ -66,7 +66,12 @@ export function AuthScreen() {
               </button>
             </div>
             <div className="mt-6">
-              {authMode === "signin" ? <SignInForm /> : <SignUpForm />}
+              <div style={{ display: authMode === "signin" ? "block" : "none" }}>
+                <SignInForm />
+              </div>
+              <div style={{ display: authMode === "signup" ? "block" : "none" }}>
+                <SignUpForm />
+              </div>
             </div>
           </div>
         </div>
