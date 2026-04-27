@@ -47,6 +47,22 @@ export function TopBar({ search, onSearchChange, homeTo, profileTo }: Props) {
             className="pl-9 glass"
           />
         </div>
+        <button
+          onClick={clearNotifications}
+          className="relative h-9 w-9 rounded-full glass inline-flex items-center justify-center hover:bg-muted/50 transition"
+          aria-label={unread > 0 ? `${unread} unread notifications` : "Notifications"}
+        >
+          <Bell className="h-4 w-4" />
+          {unread > 0 && (
+            <span className={cn(
+              "absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 rounded-full",
+              "gradient-bg text-primary-foreground text-[10px] font-bold",
+              "inline-flex items-center justify-center"
+            )}>
+              {unread}
+            </span>
+          )}
+        </button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="rounded-full ring-2 ring-border hover:ring-primary transition">
