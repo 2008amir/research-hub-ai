@@ -4,19 +4,23 @@ import { useAuth } from "@/lib/auth-context";
 import { Loader2 } from "lucide-react";
 
 export function RequireAuth({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {
-  const { user, isAdmin, loading } = useAuth();
+  const { user, isAdmin, rolesLoaded, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (loading) return;
     if (!user) {
       navigate({ to: "/" });
-    } else if (requireAdmin && !isAdmin) {
+      return;
+    }
+    // Only enforce admin requirement once roles have actually loaded —
+    // otherwise transient DB errors bounce admins to /dashboard.
+    if (requireAdmin && rolesLoaded && !isAdmin) {
       navigate({ to: "/dashboard" as never });
     }
-  }, [user, isAdmin, loading, requireAdmin, navigate]);
+  }, [user, isAdmin, rolesLoaded, loading, requireAdmin, navigate]);
 
-  if (loading || !user || (requireAdmin && !isAdmin)) {
+  if (loading || !user || (requireAdmin && !rolesLoaded) || (requireAdmin && !isAdmin)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
