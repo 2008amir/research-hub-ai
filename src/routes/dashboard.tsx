@@ -182,6 +182,7 @@ function Dashboard() {
           )}
         </main>
       </div>
+      <ChatWidget />
     </div>
   );
 }
