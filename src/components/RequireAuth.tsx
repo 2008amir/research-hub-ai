@@ -42,12 +42,15 @@ export function RequireAuth({ children, requireAdmin = false }: { children: Reac
     return <AuthScreen />;
   }
 
-  if (loading || !user || (requireAdmin && !rolesLoaded) || (requireAdmin && !isAdmin)) {
+  if (loading || !user || (requireAdmin && !rolesLoaded)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
+
+  if (requireAdmin && !isAdmin) return null;
+
   return <>{children}</>;
 }
