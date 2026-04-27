@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { AuthScreen } from "@/components/AuthScreen";
 import { AlertTriangle, Loader2, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -35,6 +36,10 @@ export function RequireAuth({ children, requireAdmin = false }: { children: Reac
         </div>
       </div>
     );
+  }
+
+  if (!loading && !user) {
+    return <AuthScreen />;
   }
 
   if (loading || !user || (requireAdmin && !rolesLoaded) || (requireAdmin && !isAdmin)) {
