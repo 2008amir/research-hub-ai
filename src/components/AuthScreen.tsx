@@ -1,6 +1,7 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,17 +12,6 @@ import { PasswordInput, isStrongPassword } from "@/components/PasswordInput";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-
-export const Route = createFileRoute("/auth")({
-  component: AuthPage,
-  head: () => ({
-    meta: [
-      { title: "Sign in or Create Account — Ecomedic Squad" },
-      { name: "description", content: "Sign in to Ecomedic Squad or create your free researcher account." },
-    ],
-  }),
-});
 
 const signInSchema = z.object({
   identifier: z.string().min(1, "Required").max(255),
@@ -38,9 +28,10 @@ const signUpSchema = z.object({
   confirmPassword: z.string(),
 }).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] });
 
-function AuthPage() {
+export function AuthScreen() {
   const { user, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
+  const [authMode, setAuthMode] = useState("signin");
 
   useEffect(() => {
     if (!loading && user) navigate({ to: isAdmin ? "/admin" : "/dashboard" });
@@ -53,17 +44,14 @@ function AuthPage() {
       </header>
       <main className="flex-1 flex items-center justify-center px-4 py-8">
         <div className="w-full max-w-md glass-strong rounded-2xl p-6 md:p-8">
-          <Tabs defaultValue="signin" className="w-full">
+          <Tabs value={authMode} onValueChange={setAuthMode} className="w-full">
             <TabsList className="grid w-full grid-cols-2 bg-muted/30">
-              <TabsTrigger value="signin">Sign in</TabsTrigger>
-              <TabsTrigger value="signup">Create account</TabsTrigger>
+              <TabsTrigger value="signin" type="button">Sign in</TabsTrigger>
+              <TabsTrigger value="signup" type="button">Create account</TabsTrigger>
             </TabsList>
             <TabsContent value="signin" className="mt-6"><SignInForm /></TabsContent>
             <TabsContent value="signup" className="mt-6"><SignUpForm /></TabsContent>
           </Tabs>
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            <Link to="/" className="hover:text-foreground">← Back to home</Link>
-          </p>
         </div>
       </main>
     </div>
@@ -76,7 +64,7 @@ function SignInForm() {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrors({});
     const parsed = signInSchema.safeParse({ identifier, password });
@@ -87,12 +75,7 @@ function SignInForm() {
     }
     setSubmitting(true);
     try {
-      let email = identifier;
-      // If not an email, look up by username
       if (!identifier.includes("@")) {
-        // We can't query auth.users from client; ask user to sign in with email if username lookup fails.
-        // For demo, fetch profile by username then use a sign-in via username->email mapping is not possible.
-        // Instead, we surface a clear message.
         const { data: profile } = await supabase
           .from("profiles")
           .select("id")
@@ -103,19 +86,17 @@ function SignInForm() {
           setSubmitting(false);
           return;
         }
-        // We don't have a server function yet; suggest using email
         toast.error("Please sign in with your email address.");
         setSubmitting(false);
         return;
       }
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email: identifier, password });
       if (error) {
         toast.error(error.message);
         setSubmitting(false);
         return;
       }
       toast.success("Welcome back!");
-      // AuthProvider listener will update; redirect handled by /auth effect
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign in failed");
       setSubmitting(false);
@@ -151,10 +132,10 @@ function SignUpForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (k: keyof typeof form) => (e: ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [k]: e.target.value });
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setErrors({});
     const parsed = signUpSchema.safeParse(form);
@@ -167,7 +148,6 @@ function SignUpForm() {
     }
     setSubmitting(true);
     try {
-      // Check username uniqueness early (best-effort)
       const { data: existing } = await supabase
         .from("profiles").select("id").eq("username", form.username).maybeSingle();
       if (existing) {
@@ -195,8 +175,8 @@ function SignUpForm() {
         setSubmitting(false);
         return;
       }
-      toast.success("Account created! Signing you in…");
-      // With auto-confirm enabled, session is set automatically
+      toast.success("Account created! Check your email to verify your account.");
+      setSubmitting(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign up failed");
       setSubmitting(false);

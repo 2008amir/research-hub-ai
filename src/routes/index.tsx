@@ -1,25 +1,12 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { createFileRoute } from "@tanstack/react-router";
+import { AuthScreen } from "@/components/AuthScreen";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: AuthScreen,
+  head: () => ({
+    meta: [
+      { title: "Sign in or Create Account — Ecomedic Squad" },
+      { name: "description", content: "Sign in to Ecomedic Squad or create your free researcher account." },
+    ],
+  }),
 });
-
-function Index() {
-  const { user, isAdmin, loading } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (loading) return;
-    if (user) navigate({ to: isAdmin ? "/admin" : "/dashboard" });
-    else navigate({ to: "/auth" });
-  }, [user, isAdmin, loading, navigate]);
-
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-    </div>
-  );
-}

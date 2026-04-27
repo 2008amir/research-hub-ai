@@ -10,7 +10,7 @@ export function RequireAuth({ children, requireAdmin = false }: { children: Reac
   useEffect(() => {
     if (loading) return;
     if (!user) {
-      navigate({ to: "/auth" });
+      navigate({ to: "/" });
     } else if (requireAdmin && !isAdmin) {
       navigate({ to: "/dashboard" as never });
     }
