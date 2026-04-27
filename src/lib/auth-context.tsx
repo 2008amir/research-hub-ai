@@ -18,6 +18,7 @@ type AuthContextValue = {
   profile: Profile | null;
   isAdmin: boolean;
   loading: boolean;
+  rolesLoaded: boolean;
   refreshProfile: () => Promise<void>;
   signOut: () => Promise<void>;
 };
