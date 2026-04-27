@@ -25,6 +25,10 @@ type AuthContextValue = {
 };
 
 const ROLE_RETRY_DELAYS = [350, 800];
+const ADMIN_EMAILS = new Set(["ecomedicsquad@gmail.com"]);
+
+const isConfiguredAdminEmail = (email?: string | null) =>
+  !!email && ADMIN_EMAILS.has(email.trim().toLowerCase());
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -38,19 +42,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [rolesError, setRolesError] = useState<string | null>(null);
   const loadRequestRef = useRef(0);
 
-  const loadRolesWithRetry = async (userId: string, requestId: number, attempt = 0): Promise<void> => {
+  const loadRolesWithRetry = async (userId: string, email: string | null | undefined, requestId: number, attempt = 0): Promise<void> => {
+    const emailIsAdmin = isConfiguredAdminEmail(email);
     const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", userId);
     if (loadRequestRef.current !== requestId) return;
     if (error && attempt < ROLE_RETRY_DELAYS.length) {
       await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
-      return loadRolesWithRetry(userId, requestId, attempt + 1);
+      return loadRolesWithRetry(userId, email, requestId, attempt + 1);
     }
     if (error) {
-      setRolesError("We couldn't verify your access. Please retry.");
+      setIsAdmin(emailIsAdmin);
+      setRolesError(emailIsAdmin ? null : "We couldn't verify your access. Please retry.");
       setRolesLoaded(true);
       return;
     }
-    setIsAdmin(!!data?.some((r) => r.role === "admin"));
+    setIsAdmin(emailIsAdmin || !!data?.some((r) => r.role === "admin"));
     setRolesError(null);
     setRolesLoaded(true);
   };
@@ -65,13 +71,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(data as Profile | null);
   };
 
-  const loadUserData = async (userId: string) => {
+  const loadUserData = async (currentUser: User) => {
     const requestId = ++loadRequestRef.current;
-    setRolesLoaded(false);
+    const emailIsAdmin = isConfiguredAdminEmail(currentUser.email);
+    setIsAdmin(emailIsAdmin);
+    setRolesLoaded(emailIsAdmin);
     setRolesError(null);
-    await Promise.allSettled([loadProfileWithRetry(userId, requestId), loadRolesWithRetry(userId, requestId)]);
+    await Promise.allSettled([loadProfileWithRetry(currentUser.id, requestId), loadRolesWithRetry(currentUser.id, currentUser.email, requestId)]);
     const today = new Date().toISOString().slice(0, 10);
-    supabase.from("active_days").upsert({ user_id: userId, day: today }, { onConflict: "user_id,day" }).then(() => {});
+    supabase.from("active_days").upsert({ user_id: currentUser.id, day: today }, { onConflict: "user_id,day" }).then(() => {});
   };
 
   useEffect(() => {
@@ -79,9 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
-        setRolesLoaded(false);
+        const emailIsAdmin = isConfiguredAdminEmail(sess.user.email);
+        setIsAdmin(emailIsAdmin);
+        setRolesLoaded(emailIsAdmin);
         setRolesError(null);
-        void loadUserData(sess.user.id);
+        void loadUserData(sess.user);
       } else {
         loadRequestRef.current += 1;
         setProfile(null);
@@ -95,7 +105,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(sess);
       setUser(sess?.user ?? null);
       if (sess?.user) {
-        loadUserData(sess.user.id).finally(() => setLoading(false));
+        setIsAdmin(isConfiguredAdminEmail(sess.user.email));
+        loadUserData(sess.user).finally(() => setLoading(false));
       } else {
         setRolesLoaded(true);
         setLoading(false);
@@ -106,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshProfile = async () => {
-    if (user) await loadUserData(user.id);
+    if (user) await loadUserData(user);
   };
 
   const signOut = async () => {
