@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { RichEditor } from "@/components/RichEditor";
+const RichEditor = lazy(() => import("@/components/RichEditor").then((m) => ({ default: m.RichEditor })));
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
@@ -104,7 +104,9 @@ function AddResearch() {
 
       <section className="glass-strong rounded-2xl p-5 space-y-4">
         <h2 className="font-semibold">Section 2 — Content (Inside View)</h2>
-        <RichEditor value={form.content_html} onChange={(html) => setForm({ ...form, content_html: html })} />
+        <Suspense fallback={<div className="h-64 glass rounded-xl flex items-center justify-center text-sm text-muted-foreground">Loading editor…</div>}>
+          <RichEditor value={form.content_html} onChange={(html) => setForm({ ...form, content_html: html })} />
+        </Suspense>
       </section>
 
       <Button type="submit" disabled={saving} className="gradient-bg text-primary-foreground hover:opacity-90 glow w-full md:w-auto">
