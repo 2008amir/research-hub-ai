@@ -72,7 +72,7 @@ type ActiveDayRow = {
   day: string;
 };
 
-async function withRetry<T>(task: () => Promise<T>, attempts = 4): Promise<T> {
+async function withRetry<T>(task: () => Promise<T>, attempts = 6): Promise<T> {
   let lastError: unknown;
   for (let i = 0; i < attempts; i += 1) {
     try {
@@ -83,30 +83,24 @@ async function withRetry<T>(task: () => Promise<T>, attempts = 4): Promise<T> {
       return result;
     } catch (error) {
       lastError = error;
-      await new Promise((resolve) => setTimeout(resolve, 600 * (i + 1)));
+      if (i === attempts - 1) break;
+      // Exponential backoff with jitter: 300, 600, 1200, 2400, 4800ms (+/- 25%)
+      const base = 300 * 2 ** i;
+      const jitter = base * (Math.random() * 0.5 - 0.25);
+      await new Promise((resolve) => setTimeout(resolve, Math.min(8000, base + jitter)));
     }
   }
   throw lastError;
 }
 
 async function safeCount(task: () => Promise<{ count: number | null; error: unknown }>): Promise<number> {
-  try {
-    const r = await withRetry(task);
-    return r.count ?? 0;
-  } catch (e) {
-    console.error("admin-stats count failed", e);
-    return 0;
-  }
+  const r = await withRetry(task);
+  return r.count ?? 0;
 }
 
 async function safeRows<T>(task: () => Promise<{ data: T[] | null; error: unknown }>): Promise<T[]> {
-  try {
-    const r = await withRetry(task);
-    return r.data ?? [];
-  } catch (e) {
-    console.error("admin-stats rows failed", e);
-    return [];
-  }
+  const r = await withRetry(task);
+  return r.data ?? [];
 }
 
 function Overview() {
