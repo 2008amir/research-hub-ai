@@ -22,6 +22,7 @@ export async function recordActivity(userId: string, options: { force?: boolean 
   const key = `${STORAGE_KEY}:${userId}:${day}`;
   const now = Date.now();
   const lastAttempt = lastAttemptByKey.get(key) ?? 0;
+  if (typeof window !== "undefined" && window.localStorage.getItem(key)) return false;
   if (inFlightKeys.has(key)) return false;
   if (!options.force && now - lastAttempt < 30_000) return false;
 
