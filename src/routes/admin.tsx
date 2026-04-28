@@ -89,10 +89,10 @@ function Overview() {
   const last7 = data?.last7 ?? [];
   const max = Math.max(1, ...last7.map((d) => d.count));
 
-  const cards = [
-    { label: "Daily Active", value: data?.dailyActive ?? 0, I: Users },
-    { label: "Weekly Active", value: data?.weeklyActive ?? 0, I: Users },
-    { label: "Monthly Active", value: data?.monthlyActive ?? 0, I: Users },
+  const cards: Array<{ label: string; value: number; I: any; to?: string; period?: "daily" | "weekly" | "monthly" }> = [
+    { label: "Daily Active", value: data?.dailyActive ?? 0, I: Users, period: "daily" },
+    { label: "Weekly Active", value: data?.weeklyActive ?? 0, I: Users, period: "weekly" },
+    { label: "Monthly Active", value: data?.monthlyActive ?? 0, I: Users, period: "monthly" },
     { label: "Total Likes", value: data?.likes ?? 0, I: Heart },
     { label: "Total Comments", value: data?.comments ?? 0, I: MessageCircle },
     { label: "Total Users", value: data?.users ?? 0, I: FileText },
@@ -120,13 +120,22 @@ function Overview() {
         </div>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {cards.map(({ label, value, I }) => (
-          <div key={label} className="glass-strong rounded-2xl p-5">
-            <I className="h-6 w-6 text-primary mb-3" />
-            <div className="text-3xl font-bold">{value}</div>
-            <div className="text-xs text-muted-foreground mt-1">{label}</div>
-          </div>
-        ))}
+        {cards.map(({ label, value, I, period }) => {
+          const content = (
+            <>
+              <I className="h-6 w-6 text-primary mb-3" />
+              <div className="text-3xl font-bold">{value}</div>
+              <div className="text-xs text-muted-foreground mt-1">{label}</div>
+            </>
+          );
+          return period ? (
+            <Link key={label} to="/admin/active/$period" params={{ period }} className="glass-strong rounded-2xl p-5 hover:ring-1 hover:ring-primary transition block">
+              {content}
+            </Link>
+          ) : (
+            <div key={label} className="glass-strong rounded-2xl p-5">{content}</div>
+          );
+        })}
       </div>
     </div>
   );
