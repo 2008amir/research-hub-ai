@@ -1,10 +1,16 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/admin/users")({ component: AdminUsers });
+export const Route = createFileRoute("/admin/users")({ component: AdminUsersLayout });
 
-function AdminUsers() {
+function AdminUsersLayout() {
+  const location = useLocation();
+  if (location.pathname !== "/admin/users") return <Outlet />;
+  return <UsersList />;
+}
+
+function UsersList() {
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["admin-users"],
     queryFn: async () => {
