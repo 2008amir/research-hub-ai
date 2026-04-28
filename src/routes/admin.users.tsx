@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,11 +23,16 @@ function AdminUsers() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {users.map((u: any) => (
-            <div key={u.id} className="glass rounded-xl p-4">
+            <Link
+              key={u.id}
+              to="/admin/users/$userId"
+              params={{ userId: u.id }}
+              className="glass rounded-xl p-4 hover:ring-1 hover:ring-primary transition block"
+            >
               <div className="font-semibold">@{u.username}</div>
               <div className="text-sm text-muted-foreground">{u.first_name} {u.last_name}</div>
               <div className="text-xs text-muted-foreground mt-1">{u.country || "—"}</div>
-            </div>
+            </Link>
           ))}
           {users.length === 0 && <p className="text-muted-foreground text-sm">No users yet.</p>}
         </div>
