@@ -31,16 +31,20 @@ function AdminChat() {
     enabled: !!user,
     refetchInterval: 5000,
     queryFn: async () => {
-      const { data: msgs, error: mErr } = await supabase
-        .from("messages")
-        .select("sender_id,recipient_id,content,file_name,file_type,read_at,created_at")
-        .or(`sender_id.eq.${user!.id},recipient_id.eq.${user!.id}`)
-        .order("created_at", { ascending: false });
+      const { data: msgs, error: mErr } = await withSupabaseRetry(() =>
+        supabase
+          .from("messages")
+          .select("sender_id,recipient_id,content,file_name,file_type,read_at,created_at")
+          .or(`sender_id.eq.${user!.id},recipient_id.eq.${user!.id}`)
+          .order("created_at", { ascending: false }),
+        5,
+      );
       if (mErr) throw mErr;
 
       const map = new Map<string, { last: string; unread: number; content: string }>();
       for (const m of msgs ?? []) {
         const other = m.sender_id === user!.id ? m.recipient_id : m.sender_id;
+        if (other === user!.id) continue;
         const preview = m.content || (m.file_type?.startsWith("image/") ? "📷 Image" : m.file_name ? `📎 ${m.file_name}` : "");
         const existing = map.get(other);
         if (!existing) {
@@ -55,10 +59,12 @@ function AdminChat() {
       }
       const ids = Array.from(map.keys());
       if (ids.length === 0) return [] as Conv[];
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id,username,first_name,last_name,country,avatar_url")
-        .in("id", ids);
+      const { data: profs } = await withSupabaseRetry(() =>
+        supabase
+          .from("profiles")
+          .select("id,username,first_name,last_name,country,avatar_url")
+          .in("id", ids),
+      );
       const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));
       return ids.map((id) => {
         const p: any = profMap.get(id) ?? {};
@@ -173,18 +179,23 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
 
   const loadLatest = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${user.id})`)
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
+    if (otherId === user.id) return;
+    const { data, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .select("*")
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${user.id})`)
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE),
+      5,
+    );
+    if (error) return;
     const list = ((data ?? []) as ChatMsg[]).slice().reverse();
     mergeMessages(list);
     if (list.length < PAGE_SIZE) setHasMore(false);
     const unread = list.filter((m) => m.recipient_id === user.id && !m.read_at).map((m) => m.id);
     if (unread.length) {
-      await supabase.from("messages").update({ read_at: new Date().toISOString() }).in("id", unread);
+      await withSupabaseRetry(() => supabase.from("messages").update({ read_at: new Date().toISOString() }).in("id", unread));
     }
   }, [user, otherId, mergeMessages]);
 
@@ -195,13 +206,19 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
     setLoadingMore(true);
     const container = scrollRef.current;
     const prevHeight = container?.scrollHeight ?? 0;
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${user.id})`)
-      .lt("created_at", oldest.created_at)
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
+    const { data, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .select("*")
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${user.id})`)
+        .lt("created_at", oldest.created_at)
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE),
+    );
+    if (error) {
+      setLoadingMore(false);
+      return;
+    }
     const list = ((data ?? []) as ChatMsg[]).slice().reverse();
     if (list.length < PAGE_SIZE) setHasMore(false);
     mergeMessages(list);
@@ -212,8 +229,9 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
   }, [user, otherId, loadingMore, hasMore, messages, mergeMessages]);
 
   useEffect(() => {
+    if (!user || otherId === user.id) return;
     (async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", otherId).maybeSingle();
+      const { data } = await withSupabaseRetry(() => supabase.from("profiles").select("*").eq("id", otherId).maybeSingle());
       setOther(data);
     })();
     loadLatest();
@@ -223,7 +241,7 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => loadLatest())
       .subscribe();
     return () => { supabase.removeChannel(ch); clearInterval(interval); };
-  }, [otherId, loadLatest]);
+  }, [user, otherId, loadLatest]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -239,6 +257,10 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
 
   const send = async () => {
     if ((!text.trim() && !file) || !user || sending) return;
+    if (otherId === user.id) {
+      toast.error("Choose a user conversation before replying.");
+      return;
+    }
     setSending(true);
     const content = text.trim() || null;
     const localFile = file;
@@ -280,19 +302,21 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
     stickToBottom.current = true;
     setMessages((prev) => [...prev, optimistic]);
 
-    const { data: inserted, error } = await withSupabaseRetry(() =>
-      supabase
-        .from("messages")
-        .insert({
-          sender_id: user.id,
-          recipient_id: otherId,
-          content,
-          file_url,
-          file_type,
-          file_name,
-        })
-        .select("*")
-        .single()
+    const { data: inserted, error } = await withSupabaseRetry(
+      () =>
+        supabase
+          .from("messages")
+          .insert({
+            sender_id: user.id,
+            recipient_id: otherId,
+            content,
+            file_url,
+            file_type,
+            file_name,
+          })
+          .select("*")
+          .single(),
+      5,
     );
     setSending(false);
     if (error || !inserted) {

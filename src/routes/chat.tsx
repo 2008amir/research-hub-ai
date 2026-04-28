@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Send, Loader2, ArrowLeft, Paperclip, X } from "lucide-react";
 import { RequireAuth } from "@/components/RequireAuth";
@@ -17,6 +17,7 @@ const PAGE_SIZE = 25;
 
 function ChatPage() {
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [adminId, setAdminId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [text, setText] = useState("");
@@ -31,11 +32,23 @@ function ChatPage() {
   // Resolve admin recipient
   useEffect(() => {
     if (!user) return;
+    if (isAdmin) {
+      navigate({ to: "/admin/chat", replace: true });
+      return;
+    }
     (async () => {
-      const { data } = await withSupabaseRetry(() => supabase.rpc("get_any_admin_id"));
-      if (data) setAdminId(data as string);
+      const { data, error } = await withSupabaseRetry(() => supabase.rpc("get_any_admin_id"), 5);
+      if (error || !data) {
+        toast.error("Chat is reconnecting. Please try again in a moment.");
+        return;
+      }
+      if (data === user.id) {
+        navigate({ to: "/admin/chat", replace: true });
+        return;
+      }
+      setAdminId(data as string);
     })();
-  }, [user]);
+  }, [user, isAdmin, navigate]);
 
   // Merge incoming messages, dedupe by id, replace optimistic temps
   const mergeMessages = useCallback((incoming: ChatMsg[]) => {
@@ -69,20 +82,24 @@ function ChatPage() {
   // Load latest page + mark unread as read
   const loadLatest = useCallback(async () => {
     if (!user || !adminId) return;
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(
-        `and(sender_id.eq.${user.id},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${user.id})`
-      )
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
+    const { data, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .select("*")
+        .or(
+          `and(sender_id.eq.${user.id},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${user.id})`
+        )
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE),
+      5,
+    );
+    if (error) return;
     const list = ((data ?? []) as ChatMsg[]).slice().reverse();
     mergeMessages(list);
     if (list.length < PAGE_SIZE) setHasMore(false);
     const unread = list.filter((m) => m.recipient_id === user.id && !m.read_at).map((m) => m.id);
     if (unread.length) {
-      await supabase.from("messages").update({ read_at: new Date().toISOString() }).in("id", unread);
+      await withSupabaseRetry(() => supabase.from("messages").update({ read_at: new Date().toISOString() }).in("id", unread));
     }
   }, [user, adminId, mergeMessages]);
 
@@ -94,15 +111,21 @@ function ChatPage() {
     setLoadingMore(true);
     const container = scrollRef.current;
     const prevHeight = container?.scrollHeight ?? 0;
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(
-        `and(sender_id.eq.${user.id},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${user.id})`
-      )
-      .lt("created_at", oldest.created_at)
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
+    const { data, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .select("*")
+        .or(
+          `and(sender_id.eq.${user.id},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${user.id})`
+        )
+        .lt("created_at", oldest.created_at)
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE),
+    );
+    if (error) {
+      setLoadingMore(false);
+      return;
+    }
     const list = ((data ?? []) as ChatMsg[]).slice().reverse();
     if (list.length < PAGE_SIZE) setHasMore(false);
     mergeMessages(list);
@@ -142,6 +165,10 @@ function ChatPage() {
 
   const send = async () => {
     if ((!text.trim() && !file) || !adminId || !user || sending) return;
+    if (adminId === user.id) {
+      navigate({ to: "/admin/chat", replace: true });
+      return;
+    }
     setSending(true);
     const content = text.trim() || null;
     const localFile = file;
@@ -183,19 +210,21 @@ function ChatPage() {
     stickToBottom.current = true;
     setMessages((prev) => [...prev, optimistic]);
 
-    const { data: inserted, error } = await withSupabaseRetry(() =>
-      supabase
-        .from("messages")
-        .insert({
-          sender_id: user.id,
-          recipient_id: adminId,
-          content,
-          file_url,
-          file_type,
-          file_name,
-        })
-        .select("*")
-        .single()
+    const { data: inserted, error } = await withSupabaseRetry(
+      () =>
+        supabase
+          .from("messages")
+          .insert({
+            sender_id: user.id,
+            recipient_id: adminId,
+            content,
+            file_url,
+            file_type,
+            file_name,
+          })
+          .select("*")
+          .single(),
+      5,
     );
     setSending(false);
     if (error || !inserted) {

@@ -37,7 +37,7 @@ export function AuthScreen() {
     // Wait for auth + roles to fully load before redirecting,
     // otherwise admins can briefly look like regular users and get sent to /dashboard.
     if (loading || !user || !rolesLoaded || rolesError) return;
-    navigate({ to: isAdmin ? "/admin" : "/dashboard" });
+    navigate({ to: isAdmin ? "/admin" : "/dashboard", replace: true });
   }, [user, isAdmin, rolesLoaded, rolesError, loading, navigate]);
 
   if (user && (loading || !rolesLoaded)) {
