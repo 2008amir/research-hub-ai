@@ -15,7 +15,7 @@ export const Route = createFileRoute("/chat")({
 const PAGE_SIZE = 25;
 
 function ChatPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [adminId, setAdminId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [text, setText] = useState("");
