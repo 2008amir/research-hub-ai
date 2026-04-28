@@ -331,11 +331,11 @@ function ChatPage() {
             />
             <button
               onClick={send}
-              disabled={sending || (!text.trim() && !file) || !adminId}
+              disabled={(!text.trim() && !file) || !adminId}
               className="h-10 w-10 shrink-0 rounded-full gradient-bg text-primary-foreground flex items-center justify-center disabled:opacity-50"
               aria-label="Send"
             >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              <Send className="h-4 w-4" />
             </button>
           </div>
         </div>
