@@ -5,6 +5,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { ChatBubble, type ChatMsg } from "@/components/ChatMessage";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { withSupabaseRetry } from "@/lib/supabase-retry";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat")({
@@ -31,7 +32,7 @@ function ChatPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.rpc("get_any_admin_id");
+      const { data } = await withSupabaseRetry(() => supabase.rpc("get_any_admin_id"));
       if (data) setAdminId(data as string);
     })();
   }, [user]);
@@ -182,25 +183,27 @@ function ChatPage() {
     stickToBottom.current = true;
     setMessages((prev) => [...prev, optimistic]);
 
-    const { data: inserted, error } = await supabase
-      .from("messages")
-      .insert({
-        sender_id: user.id,
-        recipient_id: adminId,
-        content,
-        file_url,
-        file_type,
-        file_name,
-      })
-      .select("*")
-      .single();
+    const { data: inserted, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .insert({
+          sender_id: user.id,
+          recipient_id: adminId,
+          content,
+          file_url,
+          file_type,
+          file_name,
+        })
+        .select("*")
+        .single()
+    );
     setSending(false);
     if (error || !inserted) {
       console.error("Send message failed", error);
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       setText(content ?? "");
       if (localFile) setFile(localFile);
-      toast.error(error?.message ? `Failed to send: ${error.message}` : "Failed to send");
+      toast.error(error && "message" in error ? `Failed to send: ${error.message}` : "Failed to send");
       return;
     }
     // Swap optimistic temp with the real row immediately (clears the spinner)
