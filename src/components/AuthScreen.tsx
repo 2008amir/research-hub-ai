@@ -122,6 +122,7 @@ function SignInForm() {
         return;
       }
       toast.success("Welcome back!");
+      setSubmitting(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign in failed");
       setSubmitting(false);
