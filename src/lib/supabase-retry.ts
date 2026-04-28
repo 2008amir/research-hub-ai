@@ -5,18 +5,18 @@ function isTransientError(error: unknown) {
   const message = `${value?.message ?? ""} ${value?.details ?? ""}`.toLowerCase();
 
   return Boolean(
-    value?.code && TRANSIENT_CODES.has(value.code)
-      || message.includes("schema cache")
-      || message.includes("retrying")
-      || message.includes("no connection")
-      || message.includes("network")
-      || message.includes("timeout")
+    (value?.code && TRANSIENT_CODES.has(value.code)) ||
+      message.includes("schema cache") ||
+      message.includes("retrying") ||
+      message.includes("no connection") ||
+      message.includes("network") ||
+      message.includes("timeout"),
   );
 }
 
 export async function withSupabaseRetry<T extends { error: unknown }>(
   request: () => PromiseLike<T>,
-  attempts = 4
+  attempts = 4,
 ): Promise<T> {
   let result = await request();
 
