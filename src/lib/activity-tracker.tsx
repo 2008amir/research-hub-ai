@@ -1,53 +1,59 @@
 import { useEffect, useRef } from "react";
 import { useLocation } from "@tanstack/react-router";
-import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth-context";
+import { recordActivity } from "@/lib/record-activity";
 
-const STORAGE_KEY = "ecomedic:active_day";
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-async function recordActivity(userId: string) {
-  const today = todayStr();
-  const key = `${STORAGE_KEY}:${userId}:${today}`;
-  if (typeof window !== "undefined" && window.localStorage.getItem(key)) return;
-
-  const { error } = await supabase
-    .from("active_days")
-    .upsert({ user_id: userId, day: today }, { onConflict: "user_id,day" });
-
-  if (!error && typeof window !== "undefined") {
-    window.localStorage.setItem(key, "1");
-  }
+function currentDayKey() {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
 }
 
 export function ActivityTracker() {
   const { user } = useAuth();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const lastFiredRef = useRef<string>("");
 
-  // Fire on login & route change
   useEffect(() => {
     if (!user) return;
-    const fingerprint = `${user.id}:${todayStr()}:${location.pathname}`;
+    const fingerprint = `${user.id}:${currentDayKey()}:${location.pathname}`;
     if (lastFiredRef.current === fingerprint) return;
     lastFiredRef.current = fingerprint;
-    void recordActivity(user.id);
+    void recordActivity(user.id, { force: true });
   }, [user, location.pathname]);
 
-  // Fire on any click / keypress (throttled via localStorage per-day)
   useEffect(() => {
     if (!user) return;
-    const handler = () => { void recordActivity(user.id); };
-    window.addEventListener("click", handler, { passive: true });
-    window.addEventListener("keydown", handler, { passive: true });
+
+    const handler = () => {
+      void recordActivity(user.id);
+    };
+    const forceHandler = () => {
+      void recordActivity(user.id, { force: true });
+    };
+
+    window.addEventListener("click", handler, true);
+    window.addEventListener("keydown", handler, true);
+    window.addEventListener("focus", forceHandler);
+    document.addEventListener("visibilitychange", forceHandler);
+
     return () => {
-      window.removeEventListener("click", handler);
-      window.removeEventListener("keydown", handler);
+      window.removeEventListener("click", handler, true);
+      window.removeEventListener("keydown", handler, true);
+      window.removeEventListener("focus", forceHandler);
+      document.removeEventListener("visibilitychange", forceHandler);
     };
   }, [user]);
+
+  useEffect(() => {
+    const refreshStats = () => {
+      void queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+    };
+    window.addEventListener("ecomedic:activity-recorded", refreshStats);
+    return () => window.removeEventListener("ecomedic:activity-recorded", refreshStats);
+  }, [queryClient]);
 
   return null;
 }

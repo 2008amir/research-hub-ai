@@ -5,7 +5,11 @@ import { TopBar } from "@/components/TopBar";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/admin")({
-  component: () => <RequireAuth requireAdmin><AdminLayout /></RequireAuth>,
+  component: () => (
+    <RequireAuth requireAdmin>
+      <AdminLayout />
+    </RequireAuth>
+  ),
   head: () => ({ meta: [{ title: "Admin — Ecomedic Squad" }] }),
 });
 
@@ -27,13 +31,20 @@ function AdminLayout() {
       <div className="border-b border-border bg-background/40">
         <div className="container mx-auto px-4 h-12 flex items-center gap-2 overflow-x-auto scrollbar-hide">
           {TABS.map((t) => {
-            const active = t.exact ? location.pathname === t.to : location.pathname.startsWith(t.to);
+            const active = t.exact
+              ? location.pathname === t.to
+              : location.pathname.startsWith(t.to);
             return (
-              <Link key={t.to} to={t.to as never}
+              <Link
+                key={t.to}
+                to={t.to as never}
                 className={cn(
                   "shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition border",
-                  active ? "gradient-bg text-primary-foreground border-transparent glow" : "border-border text-muted-foreground hover:bg-muted/50"
-                )}>
+                  active
+                    ? "gradient-bg text-primary-foreground border-transparent glow"
+                    : "border-border text-muted-foreground hover:bg-muted/50",
+                )}
+              >
                 {t.label}
               </Link>
             );
@@ -51,33 +62,77 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, FileText, Heart, MessageCircle } from "lucide-react";
 
+function localDay(d = new Date()) {
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
+type ActiveDayRow = {
+  user_id: string;
+  day: string;
+};
+
+async function withRetry<T>(task: () => Promise<T>, attempts = 4): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      const result = await task();
+      if (result && typeof result === "object" && "error" in result && result.error) {
+        throw result.error;
+      }
+      return result;
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 600 * (i + 1)));
+    }
+  }
+  throw lastError;
+}
+
 function Overview() {
   const { data } = useQuery({
     queryKey: ["admin-stats"],
+    staleTime: 0,
+    refetchInterval: 15_000,
     queryFn: async () => {
       const today = new Date();
-      const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 6);
-      const monthAgo = new Date(today); monthAgo.setDate(today.getDate() - 29);
-      const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+      const weekAgo = new Date(today);
+      weekAgo.setDate(today.getDate() - 6);
+      const monthAgo = new Date(today);
+      monthAgo.setDate(today.getDate() - 29);
+      const isoDay = localDay;
 
       const [users, research, likes, comments, days] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("research").select("id", { count: "exact", head: true }),
-        supabase.from("likes").select("id", { count: "exact", head: true }),
-        supabase.from("comments").select("id", { count: "exact", head: true }),
-        supabase.from("active_days").select("user_id,day").gte("day", isoDay(monthAgo)),
+        withRetry(async () =>
+          supabase.from("profiles").select("id", { count: "exact", head: true }),
+        ),
+        withRetry(async () =>
+          supabase.from("research").select("id", { count: "exact", head: true }),
+        ),
+        withRetry(async () => supabase.from("likes").select("id", { count: "exact", head: true })),
+        withRetry(async () =>
+          supabase.from("comments").select("id", { count: "exact", head: true }),
+        ),
+        withRetry(async () =>
+          supabase.from("active_days").select("user_id,day").gte("day", isoDay(monthAgo)),
+        ),
       ]);
+
+      for (const result of [users, research, likes, comments, days]) {
+        if (result.error) throw result.error;
+      }
 
       const todayStr = isoDay(today);
       const dayMap = new Map<string, Set<string>>();
-      for (const r of (days.data ?? []) as any[]) {
+      for (const r of (days.data ?? []) as ActiveDayRow[]) {
         if (!dayMap.has(r.day)) dayMap.set(r.day, new Set());
         dayMap.get(r.day)!.add(r.user_id);
       }
       const last7: { label: string; count: number }[] = [];
       const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       for (let i = 6; i >= 0; i--) {
-        const d = new Date(today); d.setDate(today.getDate() - i);
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
         last7.push({ label: labels[d.getDay()], count: dayMap.get(isoDay(d))?.size ?? 0 });
       }
       const dailyActive = dayMap.get(todayStr)?.size ?? 0;
@@ -126,7 +181,10 @@ function Overview() {
               <div key={i} className="flex-1 flex flex-col items-center gap-2">
                 <div className="text-xs text-muted-foreground">{d.count}</div>
                 <div className="w-full bg-muted/30 rounded-md overflow-hidden flex-1 flex items-end">
-                  <div className="w-full gradient-bg rounded-md transition-all" style={{ height: `${h}%` }} />
+                  <div
+                    className="w-full gradient-bg rounded-md transition-all"
+                    style={{ height: `${h}%` }}
+                  />
                 </div>
                 <div className="text-xs text-muted-foreground">{d.label}</div>
               </div>
