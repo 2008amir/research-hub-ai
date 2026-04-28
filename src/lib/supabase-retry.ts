@@ -17,7 +17,7 @@ function isTransientError(error: unknown) {
 }
 
 function asFailedResult<T extends { error: unknown }>(error: unknown): T {
-  return { data: null, error } as T;
+  return { data: null, error } as unknown as T;
 }
 
 export async function withSupabaseRetry<T extends { error: unknown }>(
