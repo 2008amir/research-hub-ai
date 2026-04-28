@@ -54,6 +54,8 @@ import { Users, FileText, Heart, MessageCircle } from "lucide-react";
 function Overview() {
   const { data } = useQuery({
     queryKey: ["admin-stats"],
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const today = new Date();
       const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 6);
