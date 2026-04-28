@@ -24,11 +24,6 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
 };
 
-type AuthStateRow = {
-  profile: Profile | null;
-  is_admin: boolean;
-};
-
 const ROLE_RETRY_DELAYS = [200, 450, 900];
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -45,23 +40,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initializedRef = useRef(false);
 
   const loadAuthStateWithRetry = async (requestId: number, attempt = 0): Promise<void> => {
-    const { data, error } = await supabase.rpc("get_my_auth_state" as never);
+    const currentUserId = user?.id;
+    if (!currentUserId) return;
+
+    const [profileResult, rolesResult] = await Promise.all([
+      supabase
+        .from("profiles")
+        .select("id, first_name, last_name, username, country, phone, avatar_url")
+        .eq("id", currentUserId)
+        .maybeSingle(),
+      supabase.from("user_roles").select("role").eq("user_id", currentUserId),
+    ]);
+
     if (loadRequestRef.current !== requestId) return;
-    if (error && attempt < ROLE_RETRY_DELAYS.length) {
+    if (rolesResult.error && attempt < ROLE_RETRY_DELAYS.length) {
       await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
       return loadAuthStateWithRetry(requestId, attempt + 1);
     }
-    if (error) {
+    if (rolesResult.error) {
       setProfile(null);
       setIsAdmin(false);
       setRolesError("We couldn't verify your access. Please retry.");
       setRolesLoaded(true);
       return;
     }
-    const rows = data as unknown as AuthStateRow[] | null;
-    const authState = rows?.[0] ?? null;
-    setProfile((authState?.profile as Profile | null) ?? null);
-    setIsAdmin(Boolean(authState?.is_admin));
+    setProfile(profileResult.error ? null : ((profileResult.data as Profile | null) ?? null));
+    setIsAdmin(Boolean(rolesResult.data?.some((r) => r.role === "admin")));
     setRolesError(null);
     setRolesLoaded(true);
   };
