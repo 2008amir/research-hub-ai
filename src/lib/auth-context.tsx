@@ -39,23 +39,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadRequestRef = useRef(0);
   const initializedRef = useRef(false);
 
-  const loadAuthStateWithRetry = async (requestId: number, attempt = 0): Promise<void> => {
-    const currentUserId = user?.id;
-    if (!currentUserId) return;
+  const loadAuthStateWithRetry = async (requestId: number, currentUser: User, attempt = 0): Promise<void> => {
 
     const [profileResult, rolesResult] = await Promise.all([
       supabase
         .from("profiles")
         .select("id, first_name, last_name, username, country, phone, avatar_url")
-        .eq("id", currentUserId)
+        .eq("id", currentUser.id)
         .maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", currentUserId),
+      supabase.from("user_roles").select("role").eq("user_id", currentUser.id),
     ]);
 
     if (loadRequestRef.current !== requestId) return;
     if (rolesResult.error && attempt < ROLE_RETRY_DELAYS.length) {
       await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
-      return loadAuthStateWithRetry(requestId, attempt + 1);
+      return loadAuthStateWithRetry(requestId, currentUser, attempt + 1);
     }
     if (rolesResult.error) {
       setProfile(null);
@@ -74,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const requestId = ++loadRequestRef.current;
     setRolesLoaded(false);
     setRolesError(null);
-    await loadAuthStateWithRetry(requestId);
+    await loadAuthStateWithRetry(requestId, currentUser);
     const today = new Date().toISOString().slice(0, 10);
     supabase.from("active_days").upsert({ user_id: currentUser.id, day: today }, { onConflict: "user_id,day" }).then(() => {});
   };
