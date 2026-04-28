@@ -53,11 +53,12 @@ function ChatPage() {
   useEffect(() => {
     load();
     if (!user || !adminId) return;
+    const interval = setInterval(load, 4000);
     const ch = supabase
       .channel(`user-chat-${user.id}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { supabase.removeChannel(ch); clearInterval(interval); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, adminId]);
 
