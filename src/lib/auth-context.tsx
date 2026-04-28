@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { AuthChangeEvent, Session, User } from "@supabase/supabase-js";
+import { withSupabaseRetry } from "@/lib/supabase-retry";
 
 export type Profile = {
   id: string;
@@ -53,9 +54,9 @@ function profileFromUser(user: User): Profile {
 
 async function loadAuthStateRequest() {
   const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 1_200);
+  const timeout = window.setTimeout(() => controller.abort(), 8_000);
   try {
-    return await supabase.rpc("get_my_auth_state").abortSignal(controller.signal).single();
+    return await withSupabaseRetry(() => supabase.rpc("get_my_auth_state").abortSignal(controller.signal).single(), 5);
   } finally {
     window.clearTimeout(timeout);
   }
@@ -144,8 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    if (typeof window !== "undefined") window.location.href = "/";
+    await supabase.auth.signOut({ scope: "global" });
+    loadRequestRef.current += 1;
+    setSession(null);
+    setUser(null);
+    setProfile(null);
+    setIsAdmin(false);
+    setRolesError(null);
+    setRolesLoaded(true);
+    setLoading(false);
+    if (typeof window !== "undefined") window.location.assign("/");
   };
 
   return (
