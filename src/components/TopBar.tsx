@@ -1,8 +1,25 @@
 import { useNavigate } from "@tanstack/react-router";
-import { FileText, Home, LogOut, MessageCircle, Plus, Search, Shield, User, Users } from "lucide-react";
+import {
+  FileText,
+  Home,
+  LogOut,
+  MessageCircle,
+  Plus,
+  Search,
+  Shield,
+  User,
+  Users,
+} from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Input } from "@/components/ui/input";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
 import { recordActivity } from "@/lib/record-activity";
@@ -17,7 +34,9 @@ type Props = {
 export function TopBar({ search, onSearchChange, homeTo, profileTo }: Props) {
   const { profile, user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const initials = ((profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")).toUpperCase() || (user?.email?.[0]?.toUpperCase() ?? "U");
+  const initials =
+    ((profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")).toUpperCase() ||
+    (user?.email?.[0]?.toUpperCase() ?? "U");
   const goTo = (to: string) => {
     if (user?.id) void recordActivity(user.id, { force: true });
     navigate({ to: to as never });
@@ -41,13 +60,17 @@ export function TopBar({ search, onSearchChange, homeTo, profileTo }: Props) {
             <button className="rounded-full ring-2 ring-border hover:ring-primary transition">
               <Avatar className="h-9 w-9">
                 <AvatarImage src={profile?.avatar_url ?? undefined} />
-                <AvatarFallback className="gradient-bg text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
+                <AvatarFallback className="gradient-bg text-primary-foreground text-xs font-bold">
+                  {initials}
+                </AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="glass-strong w-56">
             <DropdownMenuLabel>
-              <div className="font-semibold">{profile?.first_name} {profile?.last_name}</div>
+              <div className="font-semibold">
+                {profile?.first_name} {profile?.last_name}
+              </div>
               <div className="text-xs text-muted-foreground font-normal">@{profile?.username}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />

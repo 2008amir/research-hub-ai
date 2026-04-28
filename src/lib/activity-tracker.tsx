@@ -27,8 +27,12 @@ export function ActivityTracker() {
   useEffect(() => {
     if (!user) return;
 
-    const handler = () => { void recordActivity(user.id); };
-    const forceHandler = () => { void recordActivity(user.id, { force: true }); };
+    const handler = () => {
+      void recordActivity(user.id);
+    };
+    const forceHandler = () => {
+      void recordActivity(user.id, { force: true });
+    };
 
     window.addEventListener("click", handler, true);
     window.addEventListener("keydown", handler, true);
