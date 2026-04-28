@@ -227,7 +227,12 @@ function ChatPage() {
       </header>
 
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto p-4 space-y-2 container mx-auto max-w-3xl w-full">
-        {!adminId && <p className="text-xs text-muted-foreground text-center py-8">Connecting…</p>}
+        {isAdmin && (
+          <div className="text-xs text-center py-3 px-3 rounded-lg glass border border-border">
+            You're signed in as an admin. Use the <Link to="/admin/chat" className="underline font-medium">admin chat panel</Link> to reply to users.
+          </div>
+        )}
+        {!adminId && !isAdmin && <p className="text-xs text-muted-foreground text-center py-8">Connecting…</p>}
         {adminId && loadingMore && (
           <div className="flex justify-center py-2"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
         )}
