@@ -62,9 +62,16 @@ function Overview() {
       if (error) throw error;
       const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       const last7Raw = ((data as any)?.last7 ?? []) as Array<{ day: string; count: number }>;
-      const last7: { label: string; count: number }[] = last7Raw.map((d) => ({
-        label: labels[new Date(d.day).getDay()],
-        count: d.count ?? 0,
+      // Build a map of weekday-index -> count, summing any duplicates
+      const byDow = new Map<number, number>();
+      for (const r of last7Raw) {
+        const dow = new Date(r.day).getDay();
+        byDow.set(dow, (byDow.get(dow) ?? 0) + (r.count ?? 0));
+      }
+      // Always render all 7 days in order Sun..Sat
+      const last7: { label: string; count: number }[] = labels.map((label, idx) => ({
+        label,
+        count: byDow.get(idx) ?? 0,
       }));
       return {
         users: (data as any)?.users ?? 0,
