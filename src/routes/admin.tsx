@@ -160,11 +160,11 @@ function Overview() {
       }
 
       return {
-        users: users.count ?? 0,
-        newToday: newToday.count ?? 0,
-        research: research.count ?? 0,
-        likes: likes.count ?? 0,
-        comments: comments.count ?? 0,
+        users,
+        newToday,
+        research,
+        likes,
+        comments,
         last7,
         dailyActive,
         weeklyActive: weeklyUsers.size,
