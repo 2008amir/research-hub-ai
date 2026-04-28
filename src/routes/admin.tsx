@@ -102,9 +102,21 @@ function Overview() {
       monthAgo.setDate(today.getDate() - 29);
       const isoDay = localDay;
 
-      const [users, research, likes, comments, days] = await Promise.all([
+      const todayStartIso = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+      ).toISOString();
+
+      const [users, newToday, research, likes, comments, days] = await Promise.all([
         withRetry(async () =>
           supabase.from("profiles").select("id", { count: "exact", head: true }),
+        ),
+        withRetry(async () =>
+          supabase
+            .from("profiles")
+            .select("id", { count: "exact", head: true })
+            .gte("created_at", todayStartIso),
         ),
         withRetry(async () =>
           supabase.from("research").select("id", { count: "exact", head: true }),
@@ -118,7 +130,7 @@ function Overview() {
         ),
       ]);
 
-      for (const result of [users, research, likes, comments, days]) {
+      for (const result of [users, newToday, research, likes, comments, days]) {
         if (result.error) throw result.error;
       }
 
