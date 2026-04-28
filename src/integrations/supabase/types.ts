@@ -252,6 +252,7 @@ export type Database = {
     Functions: {
       get_active_history: { Args: { period: string }; Returns: Json }
       get_admin_stats: { Args: never; Returns: Json }
+      get_any_admin_id: { Args: never; Returns: string }
       get_my_auth_state: {
         Args: never
         Returns: {
