@@ -68,14 +68,32 @@ function ChatPage() {
 
   const send = async () => {
     if (!text.trim() || !adminId || !user) return;
+    const content = text.trim();
+    setText("");
     setSending(true);
-    await supabase.from("messages").insert({
+    // Optimistic message so the user sees it immediately
+    const optimistic: Msg = {
+      id: `tmp-${Date.now()}`,
       sender_id: user.id,
       recipient_id: adminId,
-      content: text.trim(),
+      content,
+      read_at: null,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, optimistic]);
+    const { error } = await supabase.from("messages").insert({
+      sender_id: user.id,
+      recipient_id: adminId,
+      content,
     });
     setSending(false);
-    setText("");
+    if (error) {
+      // Revert optimistic & restore text
+      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+      setText(content);
+      return;
+    }
+    load();
   };
 
   return (
