@@ -89,6 +89,26 @@ async function withRetry<T>(task: () => Promise<T>, attempts = 4): Promise<T> {
   throw lastError;
 }
 
+async function safeCount(task: () => Promise<{ count: number | null; error: unknown }>): Promise<number> {
+  try {
+    const r = await withRetry(task);
+    return r.count ?? 0;
+  } catch (e) {
+    console.error("admin-stats count failed", e);
+    return 0;
+  }
+}
+
+async function safeRows<T>(task: () => Promise<{ data: T[] | null; error: unknown }>): Promise<T[]> {
+  try {
+    const r = await withRetry(task);
+    return r.data ?? [];
+  } catch (e) {
+    console.error("admin-stats rows failed", e);
+    return [];
+  }
+}
+
 function Overview() {
   const { data } = useQuery({
     queryKey: ["admin-stats"],
@@ -108,35 +128,18 @@ function Overview() {
         today.getDate(),
       ).toISOString();
 
-      const [users, newToday, research, likes, comments, days] = await Promise.all([
-        withRetry(async () =>
-          supabase.from("profiles").select("id", { count: "exact", head: true }),
-        ),
-        withRetry(async () =>
-          supabase
-            .from("profiles")
-            .select("id", { count: "exact", head: true })
-            .gte("created_at", todayStartIso),
-        ),
-        withRetry(async () =>
-          supabase.from("research").select("id", { count: "exact", head: true }),
-        ),
-        withRetry(async () => supabase.from("likes").select("id", { count: "exact", head: true })),
-        withRetry(async () =>
-          supabase.from("comments").select("id", { count: "exact", head: true }),
-        ),
-        withRetry(async () =>
-          supabase.from("active_days").select("user_id,day").gte("day", isoDay(monthAgo)),
-        ),
+      const [users, newToday, research, likes, comments, daysRows] = await Promise.all([
+        safeCount(async () => await supabase.from("profiles").select("id", { count: "exact", head: true })),
+        safeCount(async () => await supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", todayStartIso)),
+        safeCount(async () => await supabase.from("research").select("id", { count: "exact", head: true })),
+        safeCount(async () => await supabase.from("likes").select("id", { count: "exact", head: true })),
+        safeCount(async () => await supabase.from("comments").select("id", { count: "exact", head: true })),
+        safeRows<ActiveDayRow>(async () => await supabase.from("active_days").select("user_id,day").gte("day", isoDay(monthAgo))),
       ]);
-
-      for (const result of [users, newToday, research, likes, comments, days]) {
-        if (result.error) throw result.error;
-      }
 
       const todayStr = isoDay(today);
       const dayMap = new Map<string, Set<string>>();
-      for (const r of (days.data ?? []) as ActiveDayRow[]) {
+      for (const r of daysRows) {
         if (!dayMap.has(r.day)) dayMap.set(r.day, new Set());
         dayMap.get(r.day)!.add(r.user_id);
       }
