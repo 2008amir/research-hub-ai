@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Send, Loader2, ArrowLeft, MessageSquare, Paperclip, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { withSupabaseRetry } from "@/lib/supabase-retry";
 import { ChatBubble, type ChatMsg } from "@/components/ChatMessage";
 import { toast } from "sonner";
 
@@ -279,18 +280,20 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
     stickToBottom.current = true;
     setMessages((prev) => [...prev, optimistic]);
 
-    const { data: inserted, error } = await supabase
-      .from("messages")
-      .insert({
-        sender_id: user.id,
-        recipient_id: otherId,
-        content,
-        file_url,
-        file_type,
-        file_name,
-      })
-      .select("*")
-      .single();
+    const { data: inserted, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .insert({
+          sender_id: user.id,
+          recipient_id: otherId,
+          content,
+          file_url,
+          file_type,
+          file_name,
+        })
+        .select("*")
+        .single()
+    );
     setSending(false);
     if (error || !inserted) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
