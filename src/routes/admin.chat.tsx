@@ -31,16 +31,20 @@ function AdminChat() {
     enabled: !!user,
     refetchInterval: 5000,
     queryFn: async () => {
-      const { data: msgs, error: mErr } = await supabase
-        .from("messages")
-        .select("sender_id,recipient_id,content,file_name,file_type,read_at,created_at")
-        .or(`sender_id.eq.${user!.id},recipient_id.eq.${user!.id}`)
-        .order("created_at", { ascending: false });
+      const { data: msgs, error: mErr } = await withSupabaseRetry(() =>
+        supabase
+          .from("messages")
+          .select("sender_id,recipient_id,content,file_name,file_type,read_at,created_at")
+          .or(`sender_id.eq.${user!.id},recipient_id.eq.${user!.id}`)
+          .order("created_at", { ascending: false }),
+        5,
+      );
       if (mErr) throw mErr;
 
       const map = new Map<string, { last: string; unread: number; content: string }>();
       for (const m of msgs ?? []) {
         const other = m.sender_id === user!.id ? m.recipient_id : m.sender_id;
+        if (other === user!.id) continue;
         const preview = m.content || (m.file_type?.startsWith("image/") ? "📷 Image" : m.file_name ? `📎 ${m.file_name}` : "");
         const existing = map.get(other);
         if (!existing) {
@@ -55,10 +59,12 @@ function AdminChat() {
       }
       const ids = Array.from(map.keys());
       if (ids.length === 0) return [] as Conv[];
-      const { data: profs } = await supabase
-        .from("profiles")
-        .select("id,username,first_name,last_name,country,avatar_url")
-        .in("id", ids);
+      const { data: profs } = await withSupabaseRetry(() =>
+        supabase
+          .from("profiles")
+          .select("id,username,first_name,last_name,country,avatar_url")
+          .in("id", ids),
+      );
       const profMap = new Map((profs ?? []).map((p: any) => [p.id, p]));
       return ids.map((id) => {
         const p: any = profMap.get(id) ?? {};
