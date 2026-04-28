@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ResearchIdRouteImport } from './routes/research.$id'
@@ -29,6 +30,11 @@ const ProfileRoute = ProfileRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -80,6 +86,7 @@ const AdminActivePeriodRoute = AdminActivePeriodRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/chat': typeof ChatRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
   '/admin/chat': typeof AdminChatRoute
@@ -93,6 +100,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/chat': typeof ChatRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
   '/admin/chat': typeof AdminChatRoute
@@ -107,6 +115,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/chat': typeof ChatRoute
   '/dashboard': typeof DashboardRoute
   '/profile': typeof ProfileRoute
   '/admin/chat': typeof AdminChatRoute
@@ -122,6 +131,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/chat'
     | '/dashboard'
     | '/profile'
     | '/admin/chat'
@@ -135,6 +145,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/chat'
     | '/dashboard'
     | '/profile'
     | '/admin/chat'
@@ -148,6 +159,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/chat'
     | '/dashboard'
     | '/profile'
     | '/admin/chat'
@@ -162,6 +174,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ChatRoute: typeof ChatRoute
   DashboardRoute: typeof DashboardRoute
   ProfileRoute: typeof ProfileRoute
   ResearchIdRoute: typeof ResearchIdRoute
@@ -181,6 +194,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -292,6 +312,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  ChatRoute: ChatRoute,
   DashboardRoute: DashboardRoute,
   ProfileRoute: ProfileRoute,
   ResearchIdRoute: ResearchIdRoute,
