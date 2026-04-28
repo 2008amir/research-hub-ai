@@ -76,6 +76,8 @@ async function withRetry<T>(task: () => Promise<T>, attempts = 4): Promise<T> {
 function Overview() {
   const { data } = useQuery({
     queryKey: ["admin-stats"],
+    staleTime: 0,
+    refetchInterval: 15_000,
     queryFn: async () => {
       const today = new Date();
       const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 6);
