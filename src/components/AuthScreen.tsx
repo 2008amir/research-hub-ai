@@ -29,7 +29,7 @@ const signUpSchema = z.object({
 }).refine((d) => d.password === d.confirmPassword, { message: "Passwords don't match", path: ["confirmPassword"] });
 
 export function AuthScreen() {
-  const { user, isAdmin, rolesLoaded, rolesError, loading } = useAuth();
+  const { user, isAdmin, rolesLoaded, rolesError, loading, refreshProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const [authMode, setAuthMode] = useState("signin");
 
@@ -39,6 +39,32 @@ export function AuthScreen() {
     if (loading || !user || !rolesLoaded || rolesError) return;
     navigate({ to: isAdmin ? "/admin" : "/dashboard" });
   }, [user, isAdmin, rolesLoaded, rolesError, loading, navigate]);
+
+  if (user && (loading || !rolesLoaded)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="glass-strong rounded-2xl p-6 text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          <p className="mt-4 text-sm text-muted-foreground">Opening your account...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (user && rolesError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="glass-strong rounded-2xl p-6 max-w-sm text-center">
+          <h1 className="text-lg font-semibold">Account check failed</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{rolesError}</p>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <Button onClick={refreshProfile} className="gradient-bg text-primary-foreground hover:opacity-90">Retry</Button>
+            <Button onClick={signOut} variant="outline">Sign out</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
