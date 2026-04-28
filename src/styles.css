@@ -165,3 +165,73 @@
   .scrollbar-hide::-webkit-scrollbar { display: none; }
   .scrollbar-hide { scrollbar-width: none; }
 }
+
+/* ---------- Rich content (editor + published article) responsive media ---------- */
+.rich-editor-content img,
+.prose img,
+.rich-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  display: block;
+  margin: 1rem auto;
+}
+/* Allow alignment via TextAlign extension on images (wraps in <div style=text-align>) */
+.rich-editor-content [style*="text-align: left"] img,
+.prose [style*="text-align: left"] img { margin-left: 0; margin-right: auto; }
+.rich-editor-content [style*="text-align: right"] img,
+.prose [style*="text-align: right"] img { margin-left: auto; margin-right: 0; }
+.rich-editor-content [style*="text-align: center"] img,
+.prose [style*="text-align: center"] img { margin-left: auto; margin-right: auto; }
+
+/* Resizable images: native browser resize handle */
+.rich-editor-content img,
+.rich-image {
+  resize: both;
+  overflow: auto;
+}
+
+/* Video embeds — responsive 16:9 */
+.video-embed,
+.video-embed-youtube,
+[data-youtube-video] {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #000;
+}
+.video-embed { aspect-ratio: 16 / 9; }
+.video-embed iframe,
+.video-embed video,
+.video-embed-youtube iframe,
+[data-youtube-video] iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+[data-youtube-video] {
+  aspect-ratio: 16 / 9;
+}
+[data-youtube-video] iframe { position: absolute; }
+
+/* Inline videos posted as plain <video> tag (e.g. mp4 link) */
+.prose video,
+.rich-editor-content video {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  display: block;
+  margin: 1rem auto;
+}
+
+/* Mobile: tighten paddings & wrap toolbars */
+@media (max-width: 640px) {
+  .rich-editor-content { padding: 0.75rem !important; }
+  .prose { font-size: 0.95rem; }
+}
+
