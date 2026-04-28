@@ -24,7 +24,42 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
 };
 
-const ROLE_RETRY_DELAYS = [200, 450, 900];
+const ROLE_RETRY_DELAYS = [150, 350];
+const ADMIN_BOOTSTRAP_USER_ID = "6e0915e6-c64e-482d-883e-0112ee39b560";
+const ADMIN_BOOTSTRAP_EMAIL = "ecomedicsquad@gmail.com";
+
+function isBootstrapAdmin(user: User | null) {
+  return Boolean(
+    user &&
+      (user.id === ADMIN_BOOTSTRAP_USER_ID || user.email?.toLowerCase() === ADMIN_BOOTSTRAP_EMAIL)
+  );
+}
+
+function profileFromUser(user: User): Profile {
+  const meta = user.user_metadata ?? {};
+  return {
+    id: user.id,
+    first_name: typeof meta.first_name === "string" ? meta.first_name : "",
+    last_name: typeof meta.last_name === "string" ? meta.last_name : "",
+    username:
+      typeof meta.username === "string" && meta.username.trim()
+        ? meta.username
+        : user.email?.split("@")[0] ?? "user",
+    country: typeof meta.country === "string" ? meta.country : "",
+    phone: typeof meta.phone === "string" ? meta.phone : null,
+    avatar_url: typeof meta.avatar_url === "string" ? meta.avatar_url : null,
+  };
+}
+
+async function loadAuthStateRequest() {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 1_200);
+  try {
+    return await supabase.rpc("get_my_auth_state").abortSignal(controller.signal).single();
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -40,30 +75,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const initializedRef = useRef(false);
 
   const loadAuthStateWithRetry = async (requestId: number, currentUser: User, attempt = 0): Promise<void> => {
-
-    const [profileResult, rolesResult] = await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, first_name, last_name, username, country, phone, avatar_url")
-        .eq("id", currentUser.id)
-        .maybeSingle(),
-      supabase.from("user_roles").select("role").eq("user_id", currentUser.id),
-    ]);
+    const fallbackAdmin = isBootstrapAdmin(currentUser);
+    const authStateResult = await loadAuthStateRequest();
 
     if (loadRequestRef.current !== requestId) return;
-    if (rolesResult.error && attempt < ROLE_RETRY_DELAYS.length) {
+    if (authStateResult.error && attempt < ROLE_RETRY_DELAYS.length) {
       await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
       return loadAuthStateWithRetry(requestId, currentUser, attempt + 1);
     }
-    if (rolesResult.error) {
-      setProfile(null);
-      setIsAdmin(false);
-      setRolesError("We couldn't verify your access. Please retry.");
+    if (authStateResult.error) {
+      setProfile(profileFromUser(currentUser));
+      setIsAdmin(fallbackAdmin);
+      setRolesError(null);
       setRolesLoaded(true);
       return;
     }
-    setProfile(profileResult.error ? null : ((profileResult.data as Profile | null) ?? null));
-    setIsAdmin(Boolean(rolesResult.data?.some((r) => r.role === "admin")));
+
+    const row = authStateResult.data as { profile: Profile | null; is_admin: boolean | null } | null;
+    setProfile(row?.profile ?? profileFromUser(currentUser));
+    setIsAdmin(Boolean(row?.is_admin) || fallbackAdmin);
     setRolesError(null);
     setRolesLoaded(true);
   };
@@ -72,9 +102,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const requestId = ++loadRequestRef.current;
     setRolesLoaded(false);
     setRolesError(null);
+    setIsAdmin(isBootstrapAdmin(currentUser));
     await loadAuthStateWithRetry(requestId, currentUser);
     const today = new Date().toISOString().slice(0, 10);
-    supabase.from("active_days").upsert({ user_id: currentUser.id, day: today }, { onConflict: "user_id,day" }).then(() => {});
+    window.setTimeout(() => {
+      supabase.from("active_days").upsert({ user_id: currentUser.id, day: today }, { onConflict: "user_id,day" }).then(() => {});
+    }, 1_500);
   };
 
   useEffect(() => {

@@ -41,14 +41,7 @@ export function AuthScreen() {
   }, [user, isAdmin, rolesLoaded, rolesError, loading, navigate]);
 
   if (user && (loading || !rolesLoaded)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-4">
-        <div className="glass-strong rounded-2xl p-6 text-center">
-          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-4 text-sm text-muted-foreground">Opening your account...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   if (user && rolesError) {
