@@ -29,7 +29,6 @@ type AuthStateRow = {
   is_admin: boolean;
 };
 
-const ADMIN_EMAIL = "ecomedicsquad@gmail.com";
 const ROLE_RETRY_DELAYS = [200, 450, 900];
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -45,36 +44,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadRequestRef = useRef(0);
   const initializedRef = useRef(false);
 
-  const loadAuthStateWithRetry = async (requestId: number, adminEmailFallback: boolean, attempt = 0): Promise<void> => {
+  const loadAuthStateWithRetry = async (requestId: number, attempt = 0): Promise<void> => {
     const { data, error } = await supabase.rpc("get_my_auth_state" as never);
     if (loadRequestRef.current !== requestId) return;
     if (error && attempt < ROLE_RETRY_DELAYS.length) {
       await new Promise((r) => setTimeout(r, ROLE_RETRY_DELAYS[attempt]));
-      return loadAuthStateWithRetry(requestId, adminEmailFallback, attempt + 1);
+      return loadAuthStateWithRetry(requestId, attempt + 1);
     }
     if (error) {
       setProfile(null);
-      setIsAdmin(adminEmailFallback);
-      setRolesError(adminEmailFallback ? null : "We couldn't verify your access. Please retry.");
+      setIsAdmin(false);
+      setRolesError("We couldn't verify your access. Please retry.");
       setRolesLoaded(true);
       return;
     }
     const rows = data as unknown as AuthStateRow[] | null;
     const authState = rows?.[0] ?? null;
     setProfile((authState?.profile as Profile | null) ?? null);
-    setIsAdmin(Boolean(authState?.is_admin) || adminEmailFallback);
+    setIsAdmin(Boolean(authState?.is_admin));
     setRolesError(null);
     setRolesLoaded(true);
   };
 
   const loadUserData = async (currentUser: User) => {
     const requestId = ++loadRequestRef.current;
-    const adminEmailFallback = currentUser.email?.toLowerCase() === ADMIN_EMAIL;
     setRolesLoaded(false);
     setRolesError(null);
-    setIsAdmin(adminEmailFallback);
-    if (adminEmailFallback) setRolesLoaded(true);
-    await loadAuthStateWithRetry(requestId, adminEmailFallback);
+    await loadAuthStateWithRetry(requestId);
     const today = new Date().toISOString().slice(0, 10);
     supabase.from("active_days").upsert({ user_id: currentUser.id, day: today }, { onConflict: "user_id,day" }).then(() => {});
   };
