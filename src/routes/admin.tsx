@@ -51,6 +51,24 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, FileText, Heart, MessageCircle } from "lucide-react";
 
+function localDay(d = new Date()) {
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
+async function withRetry<T>(task: () => Promise<T>, attempts = 4): Promise<T> {
+  let lastError: unknown;
+  for (let i = 0; i < attempts; i += 1) {
+    try {
+      return await task();
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, 600 * (i + 1)));
+    }
+  }
+  throw lastError;
+}
+
 function Overview() {
   const { data } = useQuery({
     queryKey: ["admin-stats"],
@@ -58,15 +76,19 @@ function Overview() {
       const today = new Date();
       const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 6);
       const monthAgo = new Date(today); monthAgo.setDate(today.getDate() - 29);
-      const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+      const isoDay = localDay;
 
       const [users, research, likes, comments, days] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("research").select("id", { count: "exact", head: true }),
-        supabase.from("likes").select("id", { count: "exact", head: true }),
-        supabase.from("comments").select("id", { count: "exact", head: true }),
-        supabase.from("active_days").select("user_id,day").gte("day", isoDay(monthAgo)),
+        withRetry(async () => supabase.from("profiles").select("id", { count: "exact", head: true })),
+        withRetry(async () => supabase.from("research").select("id", { count: "exact", head: true })),
+        withRetry(async () => supabase.from("likes").select("id", { count: "exact", head: true })),
+        withRetry(async () => supabase.from("comments").select("id", { count: "exact", head: true })),
+        withRetry(async () => supabase.from("active_days").select("user_id,day").gte("day", isoDay(monthAgo))),
       ]);
+
+      for (const result of [users, research, likes, comments, days]) {
+        if (result.error) throw result.error;
+      }
 
       const todayStr = isoDay(today);
       const dayMap = new Map<string, Set<string>>();
