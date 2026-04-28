@@ -62,9 +62,16 @@ function Overview() {
       if (error) throw error;
       const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
       const last7Raw = ((data as any)?.last7 ?? []) as Array<{ day: string; count: number }>;
-      const last7: { label: string; count: number }[] = last7Raw.map((d) => ({
-        label: labels[new Date(d.day).getDay()],
-        count: d.count ?? 0,
+      // Build a map of weekday-index -> count, summing any duplicates
+      const byDow = new Map<number, number>();
+      for (const r of last7Raw) {
+        const dow = new Date(r.day).getDay();
+        byDow.set(dow, (byDow.get(dow) ?? 0) + (r.count ?? 0));
+      }
+      // Always render all 7 days in order Sun..Sat
+      const last7: { label: string; count: number }[] = labels.map((label, idx) => ({
+        label,
+        count: byDow.get(idx) ?? 0,
       }));
       return {
         users: (data as any)?.users ?? 0,
@@ -98,12 +105,13 @@ function Overview() {
         <div className="text-sm font-semibold mb-4">Daily active users (last 7 days)</div>
         <div className="flex items-end gap-3 h-48">
           {last7.map((d, i) => {
-            const h = (d.count / max) * 100;
+            const h = max > 0 ? Math.max((d.count / max) * 100, d.count > 0 ? 4 : 0) : 0;
+            const isMax = d.count === max && max > 0;
             return (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div className="text-xs text-muted-foreground">{d.count}</div>
+              <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full">
+                <div className={cn("text-xs", isMax ? "text-primary font-semibold" : "text-muted-foreground")}>{d.count}</div>
                 <div className="w-full bg-muted/30 rounded-md overflow-hidden flex-1 flex items-end">
-                  <div className="w-full gradient-bg rounded-md transition-all" style={{ height: `${h}%` }} />
+                  <div className="w-full gradient-bg rounded-md transition-all duration-500" style={{ height: `${h}%` }} />
                 </div>
                 <div className="text-xs text-muted-foreground">{d.label}</div>
               </div>
