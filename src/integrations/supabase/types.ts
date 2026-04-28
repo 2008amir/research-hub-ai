@@ -124,24 +124,33 @@ export type Database = {
       }
       messages: {
         Row: {
-          content: string
+          content: string | null
           created_at: string
+          file_name: string | null
+          file_type: string | null
+          file_url: string | null
           id: string
           read_at: string | null
           recipient_id: string
           sender_id: string
         }
         Insert: {
-          content: string
+          content?: string | null
           created_at?: string
+          file_name?: string | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           read_at?: string | null
           recipient_id: string
           sender_id: string
         }
         Update: {
-          content?: string
+          content?: string | null
           created_at?: string
+          file_name?: string | null
+          file_type?: string | null
+          file_url?: string | null
           id?: string
           read_at?: string | null
           recipient_id?: string

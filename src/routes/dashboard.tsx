@@ -115,7 +115,7 @@ function Dashboard() {
         {/* Sidebar */}
         <aside
           className={cn(
-            "fixed lg:sticky top-[112px] left-0 z-20 h-[calc(100vh-112px)] w-72 glass-strong border-r border-border transition-transform overflow-y-auto",
+            "fixed lg:sticky top-[164px] left-0 z-20 h-[calc(100vh-164px)] w-72 glass-strong border-r border-border transition-transform overflow-y-auto",
             sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0 lg:w-0 lg:border-0"
           )}
         >

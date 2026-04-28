@@ -141,7 +141,7 @@ function SignInForm() {
         return;
       }
       toast.success("Welcome back!");
-      setSubmitting(false);
+      // Keep submitting=true; redirect happens once auth + roles load.
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Sign in failed");
       setSubmitting(false);
