@@ -15,13 +15,13 @@ function isTransientError(error: unknown) {
 }
 
 export async function withSupabaseRetry<T extends { error: unknown }>(
-  request: () => Promise<T>,
+  request: () => PromiseLike<T>,
   attempts = 4
-) {
+): Promise<T> {
   let result = await request();
 
   for (let i = 1; result.error && isTransientError(result.error) && i < attempts; i++) {
-    await new Promise((resolve) => window.setTimeout(resolve, 350 * i));
+    await new Promise((resolve) => setTimeout(resolve, 350 * i));
     result = await request();
   }
 
