@@ -21,7 +21,6 @@ function ChatPage() {
   const [adminId, setAdminId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -164,45 +163,26 @@ function ChatPage() {
   };
 
   const send = async () => {
-    if ((!text.trim() && !file) || !adminId || !user || sending) return;
+    if ((!text.trim() && !file) || !adminId || !user) return;
     if (adminId === user.id) {
       navigate({ to: "/admin/chat", replace: true });
       return;
     }
-    setSending(true);
     const content = text.trim() || null;
     const localFile = file;
+    // Clear input immediately — fire-and-forget UX
     setText("");
     setFile(null);
     if (fileInput.current) fileInput.current.value = "";
 
-    let file_url: string | null = null;
-    let file_type: string | null = null;
-    let file_name: string | null = null;
-
-    if (localFile) {
-      const path = `${user.id}/${Date.now()}-${localFile.name}`;
-      const up = await supabase.storage.from("chat-files").upload(path, localFile, { contentType: localFile.type });
-      if (up.error) {
-        toast.error("Upload failed");
-        setSending(false);
-        setText(content ?? "");
-        setFile(localFile);
-        return;
-      }
-      file_url = supabase.storage.from("chat-files").getPublicUrl(path).data.publicUrl;
-      file_type = localFile.type;
-      file_name = localFile.name;
-    }
-
     const optimistic: ChatMsg = {
-      id: `tmp-${Date.now()}`,
+      id: `tmp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       sender_id: user.id,
       recipient_id: adminId,
       content,
-      file_url,
-      file_type,
-      file_name,
+      file_url: null,
+      file_type: localFile?.type ?? null,
+      file_name: localFile?.name ?? null,
       read_at: null,
       created_at: new Date().toISOString(),
       _pending: true,
@@ -210,38 +190,58 @@ function ChatPage() {
     stickToBottom.current = true;
     setMessages((prev) => [...prev, optimistic]);
 
-    const { data: inserted, error } = await withSupabaseRetry(
-      () =>
-        supabase
-          .from("messages")
-          .insert({
-            sender_id: user.id,
-            recipient_id: adminId,
-            content,
-            file_url,
-            file_type,
-            file_name,
-          })
-          .select("*")
-          .single(),
-      5,
-    );
-    setSending(false);
-    if (error || !inserted) {
-      console.error("Send message failed", error);
+    // Background delivery — never blocks the UI
+    (async () => {
+      let file_url: string | null = null;
+      let file_type: string | null = localFile?.type ?? null;
+      let file_name: string | null = localFile?.name ?? null;
+
+      if (localFile) {
+        const path = `${user.id}/${Date.now()}-${localFile.name}`;
+        const up = await supabase.storage.from("chat-files").upload(path, localFile, { contentType: localFile.type });
+        if (up.error) {
+          setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+          toast.error("Upload failed");
+          return;
+        }
+        file_url = supabase.storage.from("chat-files").getPublicUrl(path).data.publicUrl;
+      }
+
+      // Retry insert in the background until the backend accepts it
+      const maxAttempts = 12;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const { data: inserted, error } = await withSupabaseRetry(
+          () =>
+            supabase
+              .from("messages")
+              .insert({
+                sender_id: user.id,
+                recipient_id: adminId,
+                content,
+                file_url,
+                file_type,
+                file_name,
+              })
+              .select("*")
+              .single(),
+          3,
+        );
+        if (!error && inserted) {
+          setMessages((prev) => {
+            const map = new Map(prev.map((m) => [m.id, m]));
+            map.delete(optimistic.id);
+            map.set((inserted as ChatMsg).id, inserted as ChatMsg);
+            return Array.from(map.values()).sort((a, b) => a.created_at.localeCompare(b.created_at));
+          });
+          return;
+        }
+        // backoff before retrying
+        await new Promise((r) => setTimeout(r, Math.min(500 * attempt, 4000)));
+      }
+      // After all attempts failed, drop the optimistic message and warn
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
-      setText(content ?? "");
-      if (localFile) setFile(localFile);
-      toast.error(error && "message" in error ? `Failed to send: ${error.message}` : "Failed to send");
-      return;
-    }
-    // Swap optimistic temp with the real row immediately (clears the spinner)
-    setMessages((prev) => {
-      const map = new Map(prev.map((m) => [m.id, m]));
-      map.delete(optimistic.id);
-      map.set((inserted as ChatMsg).id, inserted as ChatMsg);
-      return Array.from(map.values()).sort((a, b) => a.created_at.localeCompare(b.created_at));
-    });
+      toast.error("Couldn't deliver your message. Please try again.");
+    })();
   };
 
   return (
@@ -330,11 +330,11 @@ function ChatPage() {
             />
             <button
               onClick={send}
-              disabled={sending || (!text.trim() && !file) || !adminId}
+              disabled={(!text.trim() && !file) || !adminId}
               className="h-10 w-10 shrink-0 rounded-full gradient-bg text-primary-foreground flex items-center justify-center disabled:opacity-50"
               aria-label="Send"
             >
-              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              <Send className="h-4 w-4" />
             </button>
           </div>
         </div>
