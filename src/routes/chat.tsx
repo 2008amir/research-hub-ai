@@ -32,7 +32,7 @@ function ChatPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.rpc("get_any_admin_id");
+      const { data } = await withSupabaseRetry(() => supabase.rpc("get_any_admin_id"));
       if (data) setAdminId(data as string);
     })();
   }, [user]);
