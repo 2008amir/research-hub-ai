@@ -55,6 +55,20 @@ export function ChatWidget() {
     if (!user || !adminId) return;
     const channel = supabase
       .channel(`chat-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${user.id}` },
+        (payload) => {
+          const m = payload.new as Msg;
+          if (!open && m.sender_id === adminId) {
+            toast.message("New message from consultants", {
+              description: m.content.slice(0, 80),
+              action: { label: "Open", onClick: () => setOpen(true) },
+            });
+          }
+          load();
+        },
+      )
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => load())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
