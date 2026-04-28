@@ -102,9 +102,21 @@ function Overview() {
       monthAgo.setDate(today.getDate() - 29);
       const isoDay = localDay;
 
-      const [users, research, likes, comments, days] = await Promise.all([
+      const todayStartIso = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate(),
+      ).toISOString();
+
+      const [users, newToday, research, likes, comments, days] = await Promise.all([
         withRetry(async () =>
           supabase.from("profiles").select("id", { count: "exact", head: true }),
+        ),
+        withRetry(async () =>
+          supabase
+            .from("profiles")
+            .select("id", { count: "exact", head: true })
+            .gte("created_at", todayStartIso),
         ),
         withRetry(async () =>
           supabase.from("research").select("id", { count: "exact", head: true }),
@@ -118,7 +130,7 @@ function Overview() {
         ),
       ]);
 
-      for (const result of [users, research, likes, comments, days]) {
+      for (const result of [users, newToday, research, likes, comments, days]) {
         if (result.error) throw result.error;
       }
 
@@ -146,6 +158,7 @@ function Overview() {
 
       return {
         users: users.count ?? 0,
+        newToday: newToday.count ?? 0,
         research: research.count ?? 0,
         likes: likes.count ?? 0,
         comments: comments.count ?? 0,
@@ -161,12 +174,14 @@ function Overview() {
   const max = Math.max(1, ...last7.map((d) => d.count));
 
   const cards = [
+    { label: "Total Users", value: data?.users ?? 0, I: Users },
+    { label: "New Users Today", value: data?.newToday ?? 0, I: Users },
     { label: "Daily Active", value: data?.dailyActive ?? 0, I: Users },
     { label: "Weekly Active", value: data?.weeklyActive ?? 0, I: Users },
     { label: "Monthly Active", value: data?.monthlyActive ?? 0, I: Users },
+    { label: "Research Posts", value: data?.research ?? 0, I: FileText },
     { label: "Total Likes", value: data?.likes ?? 0, I: Heart },
     { label: "Total Comments", value: data?.comments ?? 0, I: MessageCircle },
-    { label: "Total Users", value: data?.users ?? 0, I: FileText },
   ];
 
   return (
