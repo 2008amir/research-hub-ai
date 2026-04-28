@@ -21,7 +21,8 @@ function ChatPage() {
   const [adminId, setAdminId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
+  const [, setSending] = useState(false);
+  void setSending;
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [file, setFile] = useState<File | null>(null);
