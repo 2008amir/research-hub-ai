@@ -250,6 +250,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_active_history: { Args: { period: string }; Returns: Json }
       get_admin_stats: { Args: never; Returns: Json }
       get_my_auth_state: {
         Args: never
@@ -258,6 +259,7 @@ export type Database = {
           profile: Json
         }[]
       }
+      get_user_detail: { Args: { _user_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
