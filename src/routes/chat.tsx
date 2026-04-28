@@ -5,6 +5,7 @@ import { RequireAuth } from "@/components/RequireAuth";
 import { ChatBubble, type ChatMsg } from "@/components/ChatMessage";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
+import { withSupabaseRetry } from "@/lib/supabase-retry";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat")({
@@ -182,18 +183,20 @@ function ChatPage() {
     stickToBottom.current = true;
     setMessages((prev) => [...prev, optimistic]);
 
-    const { data: inserted, error } = await supabase
-      .from("messages")
-      .insert({
-        sender_id: user.id,
-        recipient_id: adminId,
-        content,
-        file_url,
-        file_type,
-        file_name,
-      })
-      .select("*")
-      .single();
+    const { data: inserted, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .insert({
+          sender_id: user.id,
+          recipient_id: adminId,
+          content,
+          file_url,
+          file_type,
+          file_name,
+        })
+        .select("*")
+        .single()
+    );
     setSending(false);
     if (error || !inserted) {
       console.error("Send message failed", error);
