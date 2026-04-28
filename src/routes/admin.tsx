@@ -67,6 +67,11 @@ function localDay(d = new Date()) {
   return local.toISOString().slice(0, 10);
 }
 
+type ActiveDayRow = {
+  user_id: string;
+  day: string;
+};
+
 async function withRetry<T>(task: () => Promise<T>, attempts = 4): Promise<T> {
   let lastError: unknown;
   for (let i = 0; i < attempts; i += 1) {
@@ -119,7 +124,7 @@ function Overview() {
 
       const todayStr = isoDay(today);
       const dayMap = new Map<string, Set<string>>();
-      for (const r of (days.data ?? []) as any[]) {
+      for (const r of (days.data ?? []) as ActiveDayRow[]) {
         if (!dayMap.has(r.day)) dayMap.set(r.day, new Set());
         dayMap.get(r.day)!.add(r.user_id);
       }
