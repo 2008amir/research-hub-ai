@@ -182,22 +182,33 @@ function ChatPage() {
     stickToBottom.current = true;
     setMessages((prev) => [...prev, optimistic]);
 
-    const { error } = await supabase.from("messages").insert({
-      sender_id: user.id,
-      recipient_id: adminId,
-      content,
-      file_url,
-      file_type,
-      file_name,
-    });
+    const { data: inserted, error } = await supabase
+      .from("messages")
+      .insert({
+        sender_id: user.id,
+        recipient_id: adminId,
+        content,
+        file_url,
+        file_type,
+        file_name,
+      })
+      .select("*")
+      .single();
     setSending(false);
-    if (error) {
+    if (error || !inserted) {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       setText(content ?? "");
+      if (localFile) setFile(localFile);
       toast.error("Failed to send");
       return;
     }
-    loadLatest();
+    // Swap optimistic temp with the real row immediately (clears the spinner)
+    setMessages((prev) => {
+      const map = new Map(prev.map((m) => [m.id, m]));
+      map.delete(optimistic.id);
+      map.set((inserted as ChatMsg).id, inserted as ChatMsg);
+      return Array.from(map.values()).sort((a, b) => a.created_at.localeCompare(b.created_at));
+    });
   };
 
   return (
