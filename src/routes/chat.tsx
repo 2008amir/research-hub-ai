@@ -203,7 +203,7 @@ function ChatPage() {
       setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
       setText(content ?? "");
       if (localFile) setFile(localFile);
-      toast.error(error?.message ? `Failed to send: ${error.message}` : "Failed to send");
+      toast.error(error && "message" in error ? `Failed to send: ${error.message}` : "Failed to send");
       return;
     }
     // Swap optimistic temp with the real row immediately (clears the spinner)
