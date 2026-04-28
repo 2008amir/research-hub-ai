@@ -60,7 +60,11 @@ async function withRetry<T>(task: () => Promise<T>, attempts = 4): Promise<T> {
   let lastError: unknown;
   for (let i = 0; i < attempts; i += 1) {
     try {
-      return await task();
+      const result = await task();
+      if (result && typeof result === "object" && "error" in result && result.error) {
+        throw result.error;
+      }
+      return result;
     } catch (error) {
       lastError = error;
       await new Promise((resolve) => setTimeout(resolve, 600 * (i + 1)));
