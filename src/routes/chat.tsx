@@ -111,15 +111,21 @@ function ChatPage() {
     setLoadingMore(true);
     const container = scrollRef.current;
     const prevHeight = container?.scrollHeight ?? 0;
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(
-        `and(sender_id.eq.${user.id},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${user.id})`
-      )
-      .lt("created_at", oldest.created_at)
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
+    const { data, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .select("*")
+        .or(
+          `and(sender_id.eq.${user.id},recipient_id.eq.${adminId}),and(sender_id.eq.${adminId},recipient_id.eq.${user.id})`
+        )
+        .lt("created_at", oldest.created_at)
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE),
+    );
+    if (error) {
+      setLoadingMore(false);
+      return;
+    }
     const list = ((data ?? []) as ChatMsg[]).slice().reverse();
     if (list.length < PAGE_SIZE) setHasMore(false);
     mergeMessages(list);
@@ -159,6 +165,10 @@ function ChatPage() {
 
   const send = async () => {
     if ((!text.trim() && !file) || !adminId || !user || sending) return;
+    if (adminId === user.id) {
+      navigate({ to: "/admin/chat", replace: true });
+      return;
+    }
     setSending(true);
     const content = text.trim() || null;
     const localFile = file;
@@ -213,6 +223,7 @@ function ChatPage() {
         })
         .select("*")
         .single()
+      , 5
     );
     setSending(false);
     if (error || !inserted) {
