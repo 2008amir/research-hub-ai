@@ -54,52 +54,27 @@ import { Users, FileText, Heart, MessageCircle } from "lucide-react";
 function Overview() {
   const { data } = useQuery({
     queryKey: ["admin-stats"],
-    refetchInterval: 15_000,
+    refetchInterval: 10_000,
     refetchOnWindowFocus: true,
+    refetchOnMount: "always",
     queryFn: async () => {
-      const today = new Date();
-      const weekAgo = new Date(today); weekAgo.setDate(today.getDate() - 6);
-      const monthAgo = new Date(today); monthAgo.setDate(today.getDate() - 29);
-      const isoDay = (d: Date) => d.toISOString().slice(0, 10);
-
-      const [users, research, likes, comments, days] = await Promise.all([
-        supabase.from("profiles").select("id", { count: "exact", head: true }),
-        supabase.from("research").select("id", { count: "exact", head: true }),
-        supabase.from("likes").select("id", { count: "exact", head: true }),
-        supabase.from("comments").select("id", { count: "exact", head: true }),
-        supabase.from("active_days").select("user_id,day").gte("day", isoDay(monthAgo)),
-      ]);
-
-      const todayStr = isoDay(today);
-      const dayMap = new Map<string, Set<string>>();
-      for (const r of (days.data ?? []) as any[]) {
-        if (!dayMap.has(r.day)) dayMap.set(r.day, new Set());
-        dayMap.get(r.day)!.add(r.user_id);
-      }
-      const last7: { label: string; count: number }[] = [];
+      const { data, error } = await supabase.rpc("get_admin_stats");
+      if (error) throw error;
       const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(today); d.setDate(today.getDate() - i);
-        last7.push({ label: labels[d.getDay()], count: dayMap.get(isoDay(d))?.size ?? 0 });
-      }
-      const dailyActive = dayMap.get(todayStr)?.size ?? 0;
-      const weeklyUsers = new Set<string>();
-      const monthlyUsers = new Set<string>();
-      for (const [d, set] of dayMap.entries()) {
-        const dt = new Date(d);
-        if (dt >= weekAgo) set.forEach((u) => weeklyUsers.add(u));
-        if (dt >= monthAgo) set.forEach((u) => monthlyUsers.add(u));
-      }
-
+      const last7Raw = ((data as any)?.last7 ?? []) as Array<{ day: string; count: number }>;
+      const last7: { label: string; count: number }[] = last7Raw.map((d) => ({
+        label: labels[new Date(d.day).getDay()],
+        count: d.count ?? 0,
+      }));
       return {
-        users: users.count ?? 0,
-        research: research.count ?? 0,
-        likes: likes.count ?? 0,
-        comments: comments.count ?? 0,
+        users: (data as any)?.users ?? 0,
+        research: (data as any)?.research ?? 0,
+        likes: (data as any)?.likes ?? 0,
+        comments: (data as any)?.comments ?? 0,
         last7,
-        dailyActive,
-        weeklyActive: weeklyUsers.size,
-        monthlyActive: monthlyUsers.size,
+        dailyActive: (data as any)?.dailyActive ?? 0,
+        weeklyActive: (data as any)?.weeklyActive ?? 0,
+        monthlyActive: (data as any)?.monthlyActive ?? 0,
       };
     },
   });

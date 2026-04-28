@@ -250,6 +250,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_admin_stats: { Args: never; Returns: Json }
       get_my_auth_state: {
         Args: never
         Returns: {
@@ -264,6 +265,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      record_my_activity: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "user"
