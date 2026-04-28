@@ -179,18 +179,23 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
 
   const loadLatest = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${user.id})`)
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
+    if (otherId === user.id) return;
+    const { data, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .select("*")
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${user.id})`)
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE),
+      5,
+    );
+    if (error) return;
     const list = ((data ?? []) as ChatMsg[]).slice().reverse();
     mergeMessages(list);
     if (list.length < PAGE_SIZE) setHasMore(false);
     const unread = list.filter((m) => m.recipient_id === user.id && !m.read_at).map((m) => m.id);
     if (unread.length) {
-      await supabase.from("messages").update({ read_at: new Date().toISOString() }).in("id", unread);
+      await withSupabaseRetry(() => supabase.from("messages").update({ read_at: new Date().toISOString() }).in("id", unread));
     }
   }, [user, otherId, mergeMessages]);
 
@@ -201,13 +206,19 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
     setLoadingMore(true);
     const container = scrollRef.current;
     const prevHeight = container?.scrollHeight ?? 0;
-    const { data } = await supabase
-      .from("messages")
-      .select("*")
-      .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${user.id})`)
-      .lt("created_at", oldest.created_at)
-      .order("created_at", { ascending: false })
-      .limit(PAGE_SIZE);
+    const { data, error } = await withSupabaseRetry(() =>
+      supabase
+        .from("messages")
+        .select("*")
+        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${otherId}),and(sender_id.eq.${otherId},recipient_id.eq.${user.id})`)
+        .lt("created_at", oldest.created_at)
+        .order("created_at", { ascending: false })
+        .limit(PAGE_SIZE),
+    );
+    if (error) {
+      setLoadingMore(false);
+      return;
+    }
     const list = ((data ?? []) as ChatMsg[]).slice().reverse();
     if (list.length < PAGE_SIZE) setHasMore(false);
     mergeMessages(list);
