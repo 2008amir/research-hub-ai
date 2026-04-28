@@ -31,13 +31,8 @@ function ChatPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "admin")
-        .limit(1)
-        .maybeSingle();
-      if (data) setAdminId(data.user_id);
+      const { data } = await supabase.rpc("get_any_admin_id");
+      if (data) setAdminId(data as string);
     })();
   }, [user]);
 
