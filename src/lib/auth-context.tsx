@@ -53,13 +53,7 @@ function profileFromUser(user: User): Profile {
 }
 
 async function loadAuthStateRequest() {
-  const controller = new AbortController();
-  const timeout = window.setTimeout(() => controller.abort(), 8_000);
-  try {
-    return await withSupabaseRetry(() => supabase.rpc("get_my_auth_state").abortSignal(controller.signal).single(), 5);
-  } finally {
-    window.clearTimeout(timeout);
-  }
+  return withSupabaseRetry(() => supabase.rpc("get_my_auth_state").single(), 5);
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
