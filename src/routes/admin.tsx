@@ -61,8 +61,8 @@ function Overview() {
       const { data, error } = await supabase.rpc("get_admin_stats");
       if (error) throw error;
       const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-      const last7Raw = (data as any)?.last7 ?? [];
-      const last7 = last7Raw.map((d: any) => ({
+      const last7Raw = ((data as any)?.last7 ?? []) as Array<{ day: string; count: number }>;
+      const last7: { label: string; count: number }[] = last7Raw.map((d) => ({
         label: labels[new Date(d.day).getDay()],
         count: d.count ?? 0,
       }));
