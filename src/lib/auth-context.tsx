@@ -104,10 +104,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRolesError(null);
     setIsAdmin(isBootstrapAdmin(currentUser));
     await loadAuthStateWithRetry(requestId, currentUser);
-    const today = new Date().toISOString().slice(0, 10);
-    window.setTimeout(() => {
-      supabase.from("active_days").upsert({ user_id: currentUser.id, day: today }, { onConflict: "user_id,day" }).then(() => {});
-    }, 1_500);
   };
 
   useEffect(() => {
