@@ -229,8 +229,9 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
   }, [user, otherId, loadingMore, hasMore, messages, mergeMessages]);
 
   useEffect(() => {
+    if (!user || otherId === user.id) return;
     (async () => {
-      const { data } = await supabase.from("profiles").select("*").eq("id", otherId).maybeSingle();
+      const { data } = await withSupabaseRetry(() => supabase.from("profiles").select("*").eq("id", otherId).maybeSingle());
       setOther(data);
     })();
     loadLatest();
@@ -256,6 +257,10 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
 
   const send = async () => {
     if ((!text.trim() && !file) || !user || sending) return;
+    if (otherId === user.id) {
+      toast.error("Choose a user conversation before replying.");
+      return;
+    }
     setSending(true);
     const content = text.trim() || null;
     const localFile = file;
@@ -310,6 +315,7 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
         })
         .select("*")
         .single()
+      , 5
     );
     setSending(false);
     if (error || !inserted) {
