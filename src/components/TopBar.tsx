@@ -1,28 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
-import {
-  FileText,
-  Home,
-  LogOut,
-  MessageCircle,
-  Plus,
-  Search,
-  Shield,
-  User,
-  Users,
-} from "lucide-react";
+import { Search, User, LogOut } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { Input } from "@/components/ui/input";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
-import { recordActivity } from "@/lib/record-activity";
 
 type Props = {
   search: string;
@@ -34,13 +16,7 @@ type Props = {
 export function TopBar({ search, onSearchChange, homeTo, profileTo }: Props) {
   const { profile, user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
-  const initials =
-    ((profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")).toUpperCase() ||
-    (user?.email?.[0]?.toUpperCase() ?? "U");
-  const goTo = (to: string) => {
-    if (user?.id) void recordActivity(user.id, { force: true });
-    navigate({ to: to as never });
-  };
+  const initials = ((profile?.first_name?.[0] ?? "") + (profile?.last_name?.[0] ?? "")).toUpperCase() || (user?.email?.[0]?.toUpperCase() ?? "U");
 
   return (
     <header className="sticky top-0 z-30 glass-strong border-b border-border">
@@ -60,45 +36,21 @@ export function TopBar({ search, onSearchChange, homeTo, profileTo }: Props) {
             <button className="rounded-full ring-2 ring-border hover:ring-primary transition">
               <Avatar className="h-9 w-9">
                 <AvatarImage src={profile?.avatar_url ?? undefined} />
-                <AvatarFallback className="gradient-bg text-primary-foreground text-xs font-bold">
-                  {initials}
-                </AvatarFallback>
+                <AvatarFallback className="gradient-bg text-primary-foreground text-xs font-bold">{initials}</AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="glass-strong w-56">
             <DropdownMenuLabel>
-              <div className="font-semibold">
-                {profile?.first_name} {profile?.last_name}
-              </div>
+              <div className="font-semibold">{profile?.first_name} {profile?.last_name}</div>
               <div className="text-xs text-muted-foreground font-normal">@{profile?.username}</div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => goTo(homeTo)}>
-              <Home className="mr-2 h-4 w-4" /> Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => goTo(profileTo)}>
+            <DropdownMenuItem onClick={() => navigate({ to: profileTo as never })}>
               <User className="mr-2 h-4 w-4" /> Profile
             </DropdownMenuItem>
             {isAdmin && (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => goTo("/admin")}>
-                  <Shield className="mr-2 h-4 w-4" /> Admin Overview
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => goTo("/admin/users")}>
-                  <Users className="mr-2 h-4 w-4" /> Users
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => goTo("/admin/chat")}>
-                  <MessageCircle className="mr-2 h-4 w-4" /> Chat
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => goTo("/admin/research")}>
-                  <FileText className="mr-2 h-4 w-4" /> Research
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => goTo("/admin/research/new")}>
-                  <Plus className="mr-2 h-4 w-4" /> Add Research
-                </DropdownMenuItem>
-              </>
+              <DropdownMenuItem onClick={() => navigate({ to: "/admin" as never })}>Admin Panel</DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive">

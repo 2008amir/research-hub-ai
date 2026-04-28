@@ -2,7 +2,6 @@ import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts } from "
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/lib/auth-context";
-import { ActivityTracker } from "@/lib/activity-tracker";
 
 import "../styles.css";
 
@@ -73,7 +72,6 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <ActivityTracker />
         <Outlet />
         <Toaster richColors position="top-right" />
       </AuthProvider>
