@@ -245,7 +245,11 @@ function ChatPage() {
         <div className="container mx-auto max-w-3xl p-3 space-y-2">
           {file && (
             <div className="flex items-center gap-2 text-xs glass rounded-lg px-2 py-1.5">
-              <Paperclip className="h-3.5 w-3.5" />
+              {file.type.startsWith("image/") ? (
+                <img src={URL.createObjectURL(file)} alt="preview" className="h-10 w-10 object-cover rounded" />
+              ) : (
+                <Paperclip className="h-3.5 w-3.5" />
+              )}
               <span className="truncate flex-1">{file.name}</span>
               <button onClick={() => { setFile(null); if (fileInput.current) fileInput.current.value = ""; }}>
                 <X className="h-3.5 w-3.5" />
