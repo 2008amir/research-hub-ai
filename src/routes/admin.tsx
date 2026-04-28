@@ -104,10 +104,12 @@ async function safeRows<T>(task: () => Promise<{ data: T[] | null; error: unknow
 }
 
 function Overview() {
-  const { data } = useQuery({
+  const { data, isPending, isError, refetch } = useQuery({
     queryKey: ["admin-stats"],
     staleTime: 0,
     refetchInterval: 15_000,
+    retry: 5,
+    retryDelay: (attempt) => Math.min(8000, 500 * 2 ** attempt),
     queryFn: async () => {
       const today = new Date();
       const weekAgo = new Date(today);
@@ -122,7 +124,7 @@ function Overview() {
         today.getDate(),
       ).toISOString();
 
-      const [users, newToday, research, likes, comments, daysRows] = await Promise.all([
+      const settled = await Promise.allSettled([
         safeCount(async () => await supabase.from("profiles").select("id", { count: "exact", head: true })),
         safeCount(async () => await supabase.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", todayStartIso)),
         safeCount(async () => await supabase.from("research").select("id", { count: "exact", head: true })),
@@ -131,9 +133,16 @@ function Overview() {
         safeRows<ActiveDayRow>(async () => await supabase.from("active_days").select("user_id,day").gte("day", isoDay(monthAgo))),
       ]);
 
+      const successCount = settled.filter((r) => r.status === "fulfilled").length;
+      // If everything failed, throw so react-query retries with backoff
+      if (successCount === 0) throw new Error("All admin metric queries failed");
+
+      const num = (i: number) => (settled[i].status === "fulfilled" ? (settled[i] as PromiseFulfilledResult<number>).value : 0);
+      const rows = settled[5].status === "fulfilled" ? (settled[5] as PromiseFulfilledResult<ActiveDayRow[]>).value : [];
+
       const todayStr = isoDay(today);
       const dayMap = new Map<string, Set<string>>();
-      for (const r of daysRows) {
+      for (const r of rows) {
         if (!dayMap.has(r.day)) dayMap.set(r.day, new Set());
         dayMap.get(r.day)!.add(r.user_id);
       }
@@ -154,11 +163,11 @@ function Overview() {
       }
 
       return {
-        users,
-        newToday,
-        research,
-        likes,
-        comments,
+        users: num(0),
+        newToday: num(1),
+        research: num(2),
+        likes: num(3),
+        comments: num(4),
         last7,
         dailyActive,
         weeklyActive: weeklyUsers.size,
@@ -167,18 +176,53 @@ function Overview() {
     },
   });
 
-  const last7 = data?.last7 ?? [];
+  if (isPending) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-2xl font-bold gradient-text">Overview</h1>
+        <div className="glass-strong rounded-2xl p-5">
+          <div className="text-sm font-semibold mb-4">Daily active users (last 7 days)</div>
+          <div className="h-48 bg-muted/20 rounded-md animate-pulse" />
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="glass-strong rounded-2xl p-5 animate-pulse">
+              <div className="h-6 w-6 rounded bg-muted/30 mb-3" />
+              <div className="h-8 w-16 rounded bg-muted/30" />
+              <div className="h-3 w-24 rounded bg-muted/20 mt-2" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-bold gradient-text">Overview</h1>
+        <div className="glass-strong rounded-2xl p-6 text-center">
+          <p className="text-sm text-muted-foreground mb-4">Couldn't load metrics. The database may be temporarily unavailable.</p>
+          <button onClick={() => refetch()} className="gradient-bg text-primary-foreground px-4 py-2 rounded-md text-sm font-medium">
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const last7 = data.last7;
   const max = Math.max(1, ...last7.map((d) => d.count));
 
   const cards = [
-    { label: "Total Users", value: data?.users ?? 0, I: Users },
-    { label: "New Users Today", value: data?.newToday ?? 0, I: Users },
-    { label: "Daily Active", value: data?.dailyActive ?? 0, I: Users },
-    { label: "Weekly Active", value: data?.weeklyActive ?? 0, I: Users },
-    { label: "Monthly Active", value: data?.monthlyActive ?? 0, I: Users },
-    { label: "Research Posts", value: data?.research ?? 0, I: FileText },
-    { label: "Total Likes", value: data?.likes ?? 0, I: Heart },
-    { label: "Total Comments", value: data?.comments ?? 0, I: MessageCircle },
+    { label: "Total Users", value: data.users, I: Users },
+    { label: "New Users Today", value: data.newToday, I: Users },
+    { label: "Daily Active", value: data.dailyActive, I: Users },
+    { label: "Weekly Active", value: data.weeklyActive, I: Users },
+    { label: "Monthly Active", value: data.monthlyActive, I: Users },
+    { label: "Research Posts", value: data.research, I: FileText },
+    { label: "Total Likes", value: data.likes, I: Heart },
+    { label: "Total Comments", value: data.comments, I: MessageCircle },
   ];
 
   return (
