@@ -6,11 +6,11 @@ function isTransientError(error: unknown) {
 
   return Boolean(
     (value?.code && TRANSIENT_CODES.has(value.code)) ||
-      message.includes("schema cache") ||
-      message.includes("retrying") ||
-      message.includes("no connection") ||
-      message.includes("network") ||
-      message.includes("timeout"),
+    message.includes("schema cache") ||
+    message.includes("retrying") ||
+    message.includes("no connection") ||
+    message.includes("network") ||
+    message.includes("timeout"),
   );
 }
 
