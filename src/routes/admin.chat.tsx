@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Send, Loader2, ArrowLeft } from "lucide-react";
+import { Send, Loader2, ArrowLeft, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ type Conv = {
   country: string;
   avatar_url: string | null;
   last_at: string;
+  last_content: string;
   unread: number;
 };
 
@@ -23,22 +24,31 @@ function AdminChat() {
   const { user } = useAuth();
   const [active, setActive] = useState<string | null>(null);
 
-  const { data: convs = [], refetch } = useQuery({
+  const { data: convs = [], refetch, isLoading, error } = useQuery({
     queryKey: ["admin-convs", user?.id],
     enabled: !!user,
+    refetchInterval: 5000,
     queryFn: async () => {
-      const { data: msgs } = await supabase
+      const { data: msgs, error: mErr } = await supabase
         .from("messages")
-        .select("sender_id,recipient_id,read_at,created_at")
+        .select("sender_id,recipient_id,content,read_at,created_at")
         .or(`sender_id.eq.${user!.id},recipient_id.eq.${user!.id}`)
         .order("created_at", { ascending: false });
+      if (mErr) throw mErr;
 
-      const map = new Map<string, { last: string; unread: number }>();
+      const map = new Map<string, { last: string; unread: number; content: string }>();
       for (const m of msgs ?? []) {
         const other = m.sender_id === user!.id ? m.recipient_id : m.sender_id;
-        const existing = map.get(other) ?? { last: m.created_at, unread: 0 };
-        if (m.recipient_id === user!.id && !m.read_at) existing.unread++;
-        map.set(other, existing);
+        const existing = map.get(other);
+        if (!existing) {
+          map.set(other, {
+            last: m.created_at,
+            unread: m.recipient_id === user!.id && !m.read_at ? 1 : 0,
+            content: m.content,
+          });
+        } else {
+          if (m.recipient_id === user!.id && !m.read_at) existing.unread++;
+        }
       }
       const ids = Array.from(map.keys());
       if (ids.length === 0) return [] as Conv[];
@@ -54,6 +64,7 @@ function AdminChat() {
         country: p.country,
         avatar_url: p.avatar_url,
         last_at: map.get(p.id)!.last,
+        last_content: map.get(p.id)!.content,
         unread: map.get(p.id)!.unread,
       })).sort((a, b) => b.last_at.localeCompare(a.last_at)) as Conv[];
     },
@@ -70,9 +81,25 @@ function AdminChat() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold gradient-text mb-6">Chat</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold gradient-text">Chat</h1>
+        {!active && (
+          <span className="text-xs text-muted-foreground">{convs.length} conversation{convs.length === 1 ? "" : "s"}</span>
+        )}
+      </div>
       {active ? (
         <ChatPane otherId={active} onBack={() => { setActive(null); refetch(); }} />
+      ) : isLoading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : error ? (
+        <p className="text-sm text-destructive">Failed to load conversations.</p>
+      ) : convs.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          <MessageSquare className="h-10 w-10 mx-auto mb-2 opacity-40" />
+          <p className="text-sm">No conversations yet.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {convs.map((c) => (
@@ -86,11 +113,10 @@ function AdminChat() {
               <div className="font-semibold">@{c.username}</div>
               <div className="text-sm text-muted-foreground">{c.first_name} {c.last_name}</div>
               <div className="text-xs text-muted-foreground mt-1">{c.country || "—"}</div>
+              <div className="text-xs text-foreground/70 mt-2 line-clamp-1">{c.last_content}</div>
+              <div className="text-[10px] text-muted-foreground mt-1">{new Date(c.last_at).toLocaleString()}</div>
             </button>
           ))}
-          {convs.length === 0 && (
-            <p className="text-muted-foreground text-sm">No conversations yet.</p>
-          )}
         </div>
       )}
     </div>
@@ -125,11 +151,12 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
       setOther(data);
     })();
     load();
+    const interval = setInterval(load, 4000);
     const ch = supabase
       .channel(`admin-chat-${otherId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => load())
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => { supabase.removeChannel(ch); clearInterval(interval); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [otherId]);
 
@@ -138,9 +165,15 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
   const send = async () => {
     if (!text.trim() || !user) return;
     setSending(true);
-    await supabase.from("messages").insert({ sender_id: user.id, recipient_id: otherId, content: text.trim() });
-    setSending(false);
+    const content = text.trim();
     setText("");
+    const { error } = await supabase.from("messages").insert({ sender_id: user.id, recipient_id: otherId, content });
+    setSending(false);
+    if (error) {
+      setText(content);
+      return;
+    }
+    load();
   };
 
   return (
@@ -149,10 +182,13 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
         <button onClick={onBack} className="p-1 rounded-md hover:bg-muted/50"><ArrowLeft className="h-4 w-4" /></button>
         <div>
           <div className="font-semibold text-sm">@{other?.username ?? "—"}</div>
-          <div className="text-xs text-muted-foreground">{other?.first_name} {other?.last_name}</div>
+          <div className="text-xs text-muted-foreground">{other?.first_name} {other?.last_name} · {other?.country || "—"}</div>
         </div>
       </div>
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2">
+        {messages.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-8">No messages yet.</p>
+        )}
         {messages.map((m) => {
           const mine = m.sender_id === user?.id;
           return (
@@ -160,7 +196,12 @@ function ChatPane({ otherId, onBack }: { otherId: string; onBack: () => void }) 
               <div className={cn(
                 "max-w-[75%] px-3 py-2 rounded-2xl text-sm whitespace-pre-wrap break-words",
                 mine ? "gradient-bg text-primary-foreground" : "glass border border-border"
-              )}>{m.content}</div>
+              )}>
+                {m.content}
+                <div className={cn("text-[9px] mt-1 opacity-60", mine ? "text-right" : "text-left")}>
+                  {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </div>
+              </div>
             </div>
           );
         })}
