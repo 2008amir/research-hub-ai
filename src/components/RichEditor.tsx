@@ -584,8 +584,9 @@ export function RichEditor({ value, onChange }: Props) {
     }
     const attrs = { [prop]: normalized || null } as Record<string, string | null>;
     chain.setMark("textStyle", attrs).removeEmptyTextStyle().run();
-    onChange(editor.getHTML());
-    setHtmlBuffer(editor.getHTML());
+    const html = editor.getHTML();
+    setHtmlBuffer(html);
+    scheduleParentChange(html);
   };
 
   const Btn = ({
