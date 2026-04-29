@@ -1031,48 +1031,38 @@ export function RichEditor({ value, onChange }: Props) {
             </div>
 
             {/* Text color */}
-            <label
-              className="inline-flex items-center gap-1 text-xs cursor-pointer"
+            <ColorPicker
+              icon={<span className="text-foreground font-semibold text-sm">A</span>}
               title="Text color"
-            >
-              <span className="text-muted-foreground">A</span>
-              <input
-                type="color"
-                onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-                className="h-6 w-6 rounded cursor-pointer bg-transparent border border-border"
-                aria-label="Text color"
-              />
-            </label>
+              onPick={(c) => {
+                if (c === "transparent") (editor.chain().focus() as any).unsetColor().run();
+                else editor.chain().focus().setColor(c).run();
+              }}
+            />
 
             {/* Highlight color */}
-            <label
-              className="inline-flex items-center gap-1 text-xs cursor-pointer"
+            <ColorPicker
+              icon={<Highlighter className="h-4 w-4 text-muted-foreground" />}
               title="Highlight"
-            >
-              <Highlighter className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="color"
-                onChange={(e) =>
-                  (editor.chain().focus() as any).toggleHighlight({ color: e.target.value }).run()
-                }
-                className="h-6 w-6 rounded cursor-pointer bg-transparent border border-border"
-                aria-label="Highlight color"
-              />
-            </label>
+              onPick={(c) => {
+                if (c === "transparent") (editor.chain().focus() as any).unsetHighlight().run();
+                else (editor.chain().focus() as any).setHighlight({ color: c }).run();
+              }}
+            />
 
             {/* Section background color — colors every line in the highlighted range */}
-            <label
-              className="inline-flex items-center gap-1 text-xs cursor-pointer"
+            <ColorPicker
+              icon={<PaintBucket className="h-4 w-4 text-muted-foreground" />}
               title="Section background (colors every highlighted line from start to end)"
-            >
-              <PaintBucket className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="color"
-                onChange={(e) => applySectionBackground(e.target.value)}
-                className="h-6 w-6 rounded cursor-pointer bg-transparent border border-border"
-                aria-label="Section background color"
-              />
-            </label>
+              onPick={(c) => applySectionBackground(c)}
+            />
+
+            {/* Page background — recolors the whole editor surface */}
+            <ColorPicker
+              icon={<Square className="h-4 w-4 text-muted-foreground" fill="currentColor" />}
+              title="Page background"
+              onPick={(c) => setPageBg(c)}
+            />
 
             <div className="w-px h-5 bg-border mx-1" />
             <Btn label="Insert link" on={openLinkModal}>
