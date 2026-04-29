@@ -231,6 +231,11 @@
   background: #ffffff;
   color: #111827;
 }
+.rich-editor-stage-fullscreen,
+.rich-html-source {
+  background: #ffffff;
+  color: #111827;
+}
 .rich-editor-shell-fullscreen {
   display: flex;
   flex: 1 1 auto;
