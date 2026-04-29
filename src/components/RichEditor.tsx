@@ -7,7 +7,7 @@ import FontFamily from "@tiptap/extension-font-family";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import Youtube from "@tiptap/extension-youtube";
-import { Node as TiptapNode, mergeAttributes } from "@tiptap/core";
+import { Extension, Node as TiptapNode, mergeAttributes } from "@tiptap/core";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -53,6 +53,39 @@ const VideoEmbed = TiptapNode.create({
   },
 });
 
+const TextLayoutStyle = Extension.create({
+  name: "textLayoutStyle",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["textStyle"],
+        attributes: {
+          width: {
+            default: null,
+            parseHTML: (element) => element.style.width || null,
+            renderHTML: (attributes) => attributes.width ? { style: `width: ${attributes.width}; display: inline-block; max-width: 100%;` } : {},
+          },
+          height: {
+            default: null,
+            parseHTML: (element) => element.style.height || null,
+            renderHTML: (attributes) => attributes.height ? { style: `height: ${attributes.height}; display: inline-block;` } : {},
+          },
+          lineHeight: {
+            default: null,
+            parseHTML: (element) => element.style.lineHeight || null,
+            renderHTML: (attributes) => attributes.lineHeight ? { style: `line-height: ${attributes.lineHeight};` } : {},
+          },
+          letterSpacing: {
+            default: null,
+            parseHTML: (element) => element.style.letterSpacing || null,
+            renderHTML: (attributes) => attributes.letterSpacing ? { style: `letter-spacing: ${attributes.letterSpacing};` } : {},
+          },
+        },
+      },
+    ];
+  },
+});
+
 /* ---------- Helpers ---------- */
 function vimeoEmbed(url: string): string | null {
   const m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
@@ -94,9 +127,26 @@ function Modal({ open, onClose, title, children }: { open: boolean; onClose: () 
 
 /* ---------- Fonts ---------- */
 const FONTS = [
-  "Inter", "Arial", "Helvetica", "Verdana", "Tahoma", "Trebuchet MS",
-  "Times New Roman", "Georgia", "Garamond", "Palatino", "Courier New", "Lucida Console",
-  "Roboto", "Open Sans", "Lato", "Montserrat", "Poppins", "Playfair Display", "Merriweather", "Raleway",
+  { label: "Inter", family: "Inter, ui-sans-serif, system-ui, sans-serif" },
+  { label: "Arial", family: "Arial, Helvetica, sans-serif" },
+  { label: "Arial Black", family: "'Arial Black', Gadget, sans-serif" },
+  { label: "Helvetica", family: "Helvetica, Arial, sans-serif" },
+  { label: "Verdana", family: "Verdana, Geneva, sans-serif" },
+  { label: "Tahoma", family: "Tahoma, Geneva, sans-serif" },
+  { label: "Trebuchet MS", family: "'Trebuchet MS', Helvetica, sans-serif" },
+  { label: "Georgia", family: "Georgia, serif" },
+  { label: "Times New Roman", family: "'Times New Roman', Times, serif" },
+  { label: "Garamond", family: "Garamond, 'Times New Roman', serif" },
+  { label: "Palatino", family: "'Palatino Linotype', Palatino, serif" },
+  { label: "Courier New", family: "'Courier New', Courier, monospace" },
+  { label: "Lucida Console", family: "'Lucida Console', Monaco, monospace" },
+  { label: "Monaco", family: "Monaco, Consolas, monospace" },
+  { label: "Impact", family: "Impact, Charcoal, sans-serif" },
+  { label: "Comic Sans", family: "'Comic Sans MS', cursive" },
+  { label: "Brush Script", family: "'Brush Script MT', cursive" },
+  { label: "Copperplate", family: "Copperplate, Papyrus, fantasy" },
+  { label: "Optima", family: "Optima, Candara, sans-serif" },
+  { label: "Gill Sans", family: "'Gill Sans', 'Gill Sans MT', Calibri, sans-serif" },
 ];
 
 type Props = { value: string; onChange: (html: string) => void };
