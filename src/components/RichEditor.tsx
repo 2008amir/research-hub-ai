@@ -44,6 +44,8 @@ import {
   ArrowUp,
   ArrowDown,
   RotateCw,
+  Trash2,
+  Square,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
