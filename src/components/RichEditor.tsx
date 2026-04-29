@@ -154,6 +154,16 @@ export function RichEditor({ value, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
+  // Lock body scroll while fullscreen so the standalone editor truly stands alone
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (fullscreen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [fullscreen]);
+
   const readSelectionStyle = useCallback(() => {
     if (typeof window === "undefined") return;
     const sel = window.getSelection();
