@@ -158,7 +158,7 @@ export function RichEditor({ value, onChange }: Props) {
   const insertVideo = (url: string, source: "file" | "link") => {
     if (source === "link") {
       if (isYoutube(url)) {
-        editor.chain().focus().setYoutubeVideo({ src: url, width: 640, height: 360 }).run();
+        (editor.chain().focus() as any).setYoutubeVideo({ src: url, width: 640, height: 360 }).run();
       } else {
         const vimeo = vimeoEmbed(url);
         if (vimeo) {
@@ -219,9 +219,9 @@ export function RichEditor({ value, onChange }: Props) {
 
             <div className="w-px h-5 bg-border mx-1" />
             {/* Alignment */}
-            <Btn label="Align left" on={() => editor.chain().focus().setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })}><AlignLeft className="h-4 w-4" /></Btn>
-            <Btn label="Align center" on={() => editor.chain().focus().setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })}><AlignCenter className="h-4 w-4" /></Btn>
-            <Btn label="Align right" on={() => editor.chain().focus().setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })}><AlignRight className="h-4 w-4" /></Btn>
+            <Btn label="Align left" on={() => (editor.chain().focus() as any).setTextAlign("left").run()} active={editor.isActive({ textAlign: "left" })}><AlignLeft className="h-4 w-4" /></Btn>
+            <Btn label="Align center" on={() => (editor.chain().focus() as any).setTextAlign("center").run()} active={editor.isActive({ textAlign: "center" })}><AlignCenter className="h-4 w-4" /></Btn>
+            <Btn label="Align right" on={() => (editor.chain().focus() as any).setTextAlign("right").run()} active={editor.isActive({ textAlign: "right" })}><AlignRight className="h-4 w-4" /></Btn>
 
             <div className="w-px h-5 bg-border mx-1" />
             {/* Font family */}
@@ -252,7 +252,7 @@ export function RichEditor({ value, onChange }: Props) {
             {/* Highlight color */}
             <label className="inline-flex items-center gap-1 text-xs cursor-pointer" title="Highlight">
               <Highlighter className="h-4 w-4 text-muted-foreground" />
-              <input type="color" onChange={(e) => editor.chain().focus().toggleHighlight({ color: e.target.value }).run()}
+              <input type="color" onChange={(e) => (editor.chain().focus() as any).toggleHighlight({ color: e.target.value }).run()}
                 className="h-6 w-6 rounded cursor-pointer bg-transparent border border-border" aria-label="Highlight color" />
             </label>
 
