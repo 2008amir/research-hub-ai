@@ -474,7 +474,7 @@ export function RichEditor({ value, onChange }: Props) {
     val: string,
   ) => {
     const normalized = normalizeStyleValue(prop, val);
-    setSelStyle((s) => ({ ...s, [prop]: normalized || val }));
+    setSelStyle((s) => ({ ...s, [prop]: val }));
     const attrs = { [prop]: normalized || null } as Record<string, string | null>;
     editor.chain().focus().setMark("textStyle", attrs).removeEmptyTextStyle().run();
     onChange(editor.getHTML());
@@ -799,7 +799,7 @@ export function RichEditor({ value, onChange }: Props) {
       <div
         className={cn(
           "rich-editor-stage",
-          fullscreen && "flex min-h-0 flex-1 flex-col overflow-auto bg-white",
+          fullscreen && "rich-editor-stage-fullscreen flex min-h-0 flex-1 flex-col overflow-auto",
         )}
       >
         {showHtml ? (
@@ -811,7 +811,7 @@ export function RichEditor({ value, onChange }: Props) {
             }}
             spellCheck={false}
             className={cn(
-              "w-full min-h-[400px] p-4 bg-white font-mono text-xs leading-relaxed text-slate-950 focus:outline-none resize-y",
+              "rich-html-source w-full min-h-[400px] p-4 font-mono text-xs leading-relaxed focus:outline-none resize-y",
               fullscreen && "min-h-full flex-1 resize-none",
             )}
             placeholder="<p>Write HTML here…</p>"
