@@ -353,6 +353,7 @@ export function RichEditor({ value, onChange }: Props) {
       StarterKit, // includes heading 1-6, lists, link, underline, blockquote, code, history…
       TextStyle,
       TextLayoutStyle,
+      BlockStyle,
       Color,
       FontFamily.configure({ types: ["textStyle"] }),
       Highlight.configure({ multicolor: true }),
