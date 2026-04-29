@@ -288,10 +288,10 @@ export function RichEditor({ value, onChange }: Props) {
     </button>
   );
 
-  return (
+  const editorTree = (
     <div className={cn(
       "glass rounded-xl overflow-hidden border border-border",
-      fullscreen && "fixed inset-0 z-[150] rounded-none flex flex-col bg-background"
+      fullscreen && "fixed inset-0 z-[2147483600] rounded-none flex flex-col bg-background border-0"
     )}>
       {/* Top action bar with fullscreen */}
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-muted/10">
