@@ -313,27 +313,25 @@ export function RichEditor({ value, onChange }: Props) {
     setLinkUrl(""); setLinkLabel("");
   };
 
-  // Apply inline style to current selection (uses TextStyle mark for color-style props)
+  const normalizeStyleValue = (prop: "lineHeight" | "letterSpacing" | "width" | "height", raw: string) => {
+    const value = raw.trim();
+    if (!value) return "";
+    if ((prop === "width" || prop === "height" || prop === "letterSpacing") && /^-?\d+(\.\d+)?$/.test(value)) return `${value}px`;
+    return value;
+  };
+
+  const chooseFont = (font: typeof FONTS[number]) => {
+    setSelectedFont(font);
+    setFontMenuOpen(false);
+    editor.chain().focus().setFontFamily(font.family).run();
+  };
+
+  // Apply inline style to the saved editor selection, not the input focus selection.
   const applyInlineStyle = (prop: "lineHeight" | "letterSpacing" | "width" | "height", val: string) => {
-    if (typeof window === "undefined") return;
-    setSelStyle((s) => ({ ...s, [prop]: val }));
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const range = sel.getRangeAt(0);
-    if (range.collapsed) {
-      // apply to nearest block element
-      let node: Node | null = sel.anchorNode;
-      while (node && node.nodeType !== 1) node = node.parentNode;
-      if (node) (node as HTMLElement).style.setProperty(prop === "lineHeight" ? "line-height" : prop === "letterSpacing" ? "letter-spacing" : prop, val);
-    } else {
-      const span = document.createElement("span");
-      span.style.setProperty(prop === "lineHeight" ? "line-height" : prop === "letterSpacing" ? "letter-spacing" : prop, val);
-      try {
-        const contents = range.extractContents();
-        span.appendChild(contents);
-        range.insertNode(span);
-      } catch { /* ignore */ }
-    }
+    const normalized = normalizeStyleValue(prop, val);
+    setSelStyle((s) => ({ ...s, [prop]: normalized || val }));
+    const attrs = { [prop]: normalized || null } as Record<string, string | null>;
+    editor.chain().focus().setMark("textStyle", attrs).removeEmptyTextStyle().run();
     onChange(editor.getHTML());
     setHtmlBuffer(editor.getHTML());
   };
