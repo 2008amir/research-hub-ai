@@ -360,8 +360,8 @@ export function RichEditor({ value, onChange }: Props) {
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      onChange(html);
       setHtmlBuffer(html);
+      scheduleParentChange(html);
     },
     onSelectionUpdate: () => readSelectionStyle(),
     immediatelyRender: false,
