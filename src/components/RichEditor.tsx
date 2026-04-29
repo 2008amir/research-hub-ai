@@ -877,7 +877,19 @@ export function RichEditor({ value, onChange }: Props) {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 p-2 border-b border-border bg-muted/20">
+      <div className="relative flex flex-wrap items-center gap-1 p-2 border-b border-border bg-muted/20">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-1 w-full",
+            mediaSel && !showHtml && "invisible pointer-events-none",
+          )}
+        >
+        {!showHtml && (
+          <></>
+        )}
+        {!showHtml && (
+          <>{/* spacer kept for diff stability */}</>
+        )}
         {!showHtml && (
           <>
             <Btn
