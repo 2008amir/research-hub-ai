@@ -115,10 +115,19 @@
     border-color: var(--color-border);
   }
 
-  html, body {
+  html,
+  body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
   }
 
   body {
@@ -162,8 +171,12 @@
   .glow {
     box-shadow: var(--shadow-glow);
   }
-  .scrollbar-hide::-webkit-scrollbar { display: none; }
-  .scrollbar-hide { scrollbar-width: none; }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    scrollbar-width: none;
+  }
 }
 
 /* ---------- Editor surface (white, like Word) ---------- */
@@ -178,19 +191,62 @@
 .rich-editor-light h5,
 .rich-editor-light h6,
 .rich-editor-light strong,
-.rich-editor-light blockquote { color: #111827; }
-.rich-editor-light a { color: #2563eb; text-decoration: underline; }
+.rich-editor-light blockquote {
+  color: #111827;
+}
+.rich-editor-light a {
+  color: #2563eb;
+  text-decoration: underline;
+}
 .rich-editor-light .link-url-below {
   display: inline-block;
   font-size: 0.8em;
   color: #6b7280;
   word-break: break-all;
 }
-.rich-editor-light ul { list-style: disc; padding-left: 1.5rem; }
-.rich-editor-light ol { list-style: decimal; padding-left: 1.5rem; }
-.rich-editor-light h1 { font-size: 2em; font-weight: 700; margin: 0.6em 0 0.4em; }
-.rich-editor-light h2 { font-size: 1.5em; font-weight: 700; margin: 0.6em 0 0.4em; }
-.rich-editor-light h3 { font-size: 1.25em; font-weight: 600; margin: 0.6em 0 0.4em; }
+.rich-editor-light ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+}
+.rich-editor-light ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+}
+.rich-editor-light h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin: 0.6em 0 0.4em;
+}
+.rich-editor-light h2 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin: 0.6em 0 0.4em;
+}
+.rich-editor-light h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin: 0.6em 0 0.4em;
+}
+.rich-editor-stage .tiptap {
+  background: #ffffff;
+  color: #111827;
+}
+.rich-editor-stage-fullscreen,
+.rich-html-source {
+  background: #ffffff;
+  color: #111827;
+}
+.rich-editor-shell-fullscreen {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 100%;
+  background: #ffffff;
+}
+.rich-editor-shell-fullscreen .tiptap {
+  flex: 1 1 auto;
+  min-height: 100%;
+  width: 100%;
+}
 
 /* ---------- Rich content (editor + published article) responsive media ---------- */
 .rich-editor-content img,
@@ -204,11 +260,20 @@
 }
 /* Allow alignment via TextAlign extension on images (wraps in <div style=text-align>) */
 .rich-editor-content [style*="text-align: left"] img,
-.prose [style*="text-align: left"] img { margin-left: 0; margin-right: auto; }
+.prose [style*="text-align: left"] img {
+  margin-left: 0;
+  margin-right: auto;
+}
 .rich-editor-content [style*="text-align: right"] img,
-.prose [style*="text-align: right"] img { margin-left: auto; margin-right: 0; }
+.prose [style*="text-align: right"] img {
+  margin-left: auto;
+  margin-right: 0;
+}
 .rich-editor-content [style*="text-align: center"] img,
-.prose [style*="text-align: center"] img { margin-left: auto; margin-right: auto; }
+.prose [style*="text-align: center"] img {
+  margin-left: auto;
+  margin-right: auto;
+}
 
 /* Resizable images: native browser resize handle */
 .rich-editor-content img,
@@ -229,7 +294,9 @@
   overflow: hidden;
   background: #000;
 }
-.video-embed { aspect-ratio: 16 / 9; }
+.video-embed {
+  aspect-ratio: 16 / 9;
+}
 .video-embed iframe,
 .video-embed video,
 .video-embed-youtube iframe,
@@ -243,7 +310,9 @@
 [data-youtube-video] {
   aspect-ratio: 16 / 9;
 }
-[data-youtube-video] iframe { position: absolute; }
+[data-youtube-video] iframe {
+  position: absolute;
+}
 
 /* Inline videos posted as plain <video> tag (e.g. mp4 link) */
 .prose video,
@@ -257,7 +326,10 @@
 
 /* Mobile: tighten paddings & wrap toolbars */
 @media (max-width: 640px) {
-  .rich-editor-content { padding: 0.75rem !important; }
-  .prose { font-size: 0.95rem; }
+  .rich-editor-content {
+    padding: 0.75rem !important;
+  }
+  .prose {
+    font-size: 0.95rem;
+  }
 }
-
