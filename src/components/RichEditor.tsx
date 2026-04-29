@@ -44,6 +44,8 @@ import {
   ArrowUp,
   ArrowDown,
   RotateCw,
+  Trash2,
+  Square,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -289,6 +291,75 @@ const GOOGLE_FONTS_HREF =
     "Permanent+Marker","Bangers","Press+Start+2P",
   ].map((f) => `family=${f}`).join("&") + "&display=swap";
 
+/* ---------- Color picker with transparent swatch ---------- */
+const PRESET_COLORS = [
+  "#000000","#ffffff","#ef4444","#f97316","#eab308","#22c55e",
+  "#06b6d4","#3b82f6","#8b5cf6","#ec4899","#64748b","#7c2d12",
+];
+function ColorPicker({
+  icon,
+  title,
+  onPick,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  onPick: (color: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative inline-flex">
+      <button
+        type="button"
+        title={title}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1 px-1.5 py-1 rounded-md hover:bg-muted/50 border border-transparent"
+      >
+        {icon}
+        <span className="text-[10px] text-muted-foreground">▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[2147483600]" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-1 z-[2147483601] w-44 rounded-md border border-border bg-popover p-2 shadow-xl">
+            <div className="grid grid-cols-6 gap-1.5">
+              <button
+                type="button"
+                title="Transparent"
+                onClick={() => { onPick("transparent"); setOpen(false); }}
+                className="h-6 w-6 rounded border border-border bg-white relative overflow-hidden"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(45deg,#ccc 25%,transparent 25%),linear-gradient(-45deg,#ccc 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ccc 75%),linear-gradient(-45deg,transparent 75%,#ccc 75%)",
+                  backgroundSize: "8px 8px",
+                  backgroundPosition: "0 0,0 4px,4px -4px,-4px 0",
+                }}
+              />
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => { onPick(c); setOpen(false); }}
+                  className="h-6 w-6 rounded border border-border"
+                  style={{ background: c }}
+                  title={c}
+                />
+              ))}
+            </div>
+            <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              Custom
+              <input
+                type="color"
+                onChange={(e) => { onPick(e.target.value); setOpen(false); }}
+                className="h-6 w-10 rounded cursor-pointer bg-transparent border border-border"
+              />
+            </label>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 type Props = { value: string; onChange: (html: string) => void };
 
 export function RichEditor({ value, onChange }: Props) {
@@ -304,6 +375,7 @@ export function RichEditor({ value, onChange }: Props) {
   const [fullscreen, setFullscreen] = useState(false);
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
   const [fontSearch, setFontSearch] = useState("");
+  const [pageBg, setPageBg] = useState<string>("#ffffff");
   const [selectedFont, setSelectedFont] = useState(FONTS[0]);
 
   // Selection style inputs (committed-on-Enter)
@@ -649,17 +721,9 @@ export function RichEditor({ value, onChange }: Props) {
     }
   };
 
-  // Click handler on the editor surface: open floating toolbar when an
-  // image / video / iframe is clicked.
-  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    const media = target.closest(
-      "img, video, iframe, .video-embed, [data-youtube-video]",
-    ) as HTMLElement | null;
-    if (!media) {
-      setMediaSel(null);
-      return;
-    }
+  // Open the floating media toolbar (replacing the formatting toolbar)
+  // when an image / video / iframe is hovered or clicked.
+  const openMediaToolbar = (media: HTMLElement) => {
     const inline = media.style;
     const cs = window.getComputedStyle(media);
     setMediaSel({
@@ -669,6 +733,48 @@ export function RichEditor({ value, onChange }: Props) {
       radius: inline.borderRadius || cs.borderRadius || "0px",
       rotate: (inline.transform.match(/rotate\(([-\d.]+)deg\)/) || [, "0"])[1] + "deg",
     });
+  };
+
+  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const media = target.closest(
+      "img, video, iframe, .video-embed, [data-youtube-video]",
+    ) as HTMLElement | null;
+    if (media) openMediaToolbar(media);
+  };
+
+  const handleEditorMouseOver = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (mediaSel) return;
+    const target = e.target as HTMLElement;
+    const media = target.closest(
+      "img, video, iframe, .video-embed, [data-youtube-video]",
+    ) as HTMLElement | null;
+    if (media) openMediaToolbar(media);
+  };
+
+  const deleteSelectedMedia = () => {
+    if (!mediaSel || !editor) return;
+    const el = mediaSel.el;
+    // Use TipTap to find the node at the DOM position and delete it
+    const pos = (editor.view as any).posAtDOM(el, 0);
+    if (typeof pos === "number" && pos >= 0) {
+      const $pos = editor.state.doc.resolve(pos);
+      // walk up to find an ancestor node we can delete
+      const tr = editor.state.tr;
+      const node = editor.state.doc.nodeAt(pos);
+      if (node) {
+        tr.delete(pos, pos + node.nodeSize);
+        editor.view.dispatch(tr);
+      } else {
+        el.remove();
+        const html = editor.getHTML();
+        setHtmlBuffer(html);
+        scheduleParentChange(html);
+      }
+    } else {
+      el.remove();
+    }
+    setMediaSel(null);
   };
 
   const updateMediaStyle = (
@@ -771,7 +877,13 @@ export function RichEditor({ value, onChange }: Props) {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-1 p-2 border-b border-border bg-muted/20">
+      <div className="relative flex flex-wrap items-center gap-1 p-2 border-b border-border bg-muted/20">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-1 w-full",
+            mediaSel && !showHtml && "invisible pointer-events-none",
+          )}
+        >
         {!showHtml && (
           <>
             <Btn
@@ -925,48 +1037,38 @@ export function RichEditor({ value, onChange }: Props) {
             </div>
 
             {/* Text color */}
-            <label
-              className="inline-flex items-center gap-1 text-xs cursor-pointer"
+            <ColorPicker
+              icon={<span className="text-foreground font-semibold text-sm">A</span>}
               title="Text color"
-            >
-              <span className="text-muted-foreground">A</span>
-              <input
-                type="color"
-                onChange={(e) => editor.chain().focus().setColor(e.target.value).run()}
-                className="h-6 w-6 rounded cursor-pointer bg-transparent border border-border"
-                aria-label="Text color"
-              />
-            </label>
+              onPick={(c) => {
+                if (c === "transparent") (editor.chain().focus() as any).unsetColor().run();
+                else editor.chain().focus().setColor(c).run();
+              }}
+            />
 
             {/* Highlight color */}
-            <label
-              className="inline-flex items-center gap-1 text-xs cursor-pointer"
+            <ColorPicker
+              icon={<Highlighter className="h-4 w-4 text-muted-foreground" />}
               title="Highlight"
-            >
-              <Highlighter className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="color"
-                onChange={(e) =>
-                  (editor.chain().focus() as any).toggleHighlight({ color: e.target.value }).run()
-                }
-                className="h-6 w-6 rounded cursor-pointer bg-transparent border border-border"
-                aria-label="Highlight color"
-              />
-            </label>
+              onPick={(c) => {
+                if (c === "transparent") (editor.chain().focus() as any).unsetHighlight().run();
+                else (editor.chain().focus() as any).setHighlight({ color: c }).run();
+              }}
+            />
 
             {/* Section background color — colors every line in the highlighted range */}
-            <label
-              className="inline-flex items-center gap-1 text-xs cursor-pointer"
+            <ColorPicker
+              icon={<PaintBucket className="h-4 w-4 text-muted-foreground" />}
               title="Section background (colors every highlighted line from start to end)"
-            >
-              <PaintBucket className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="color"
-                onChange={(e) => applySectionBackground(e.target.value)}
-                className="h-6 w-6 rounded cursor-pointer bg-transparent border border-border"
-                aria-label="Section background color"
-              />
-            </label>
+              onPick={(c) => applySectionBackground(c)}
+            />
+
+            {/* Page background — recolors the whole editor surface */}
+            <ColorPicker
+              icon={<Square className="h-4 w-4 text-muted-foreground" fill="currentColor" />}
+              title="Page background"
+              onPick={(c) => setPageBg(c)}
+            />
 
             <div className="w-px h-5 bg-border mx-1" />
             <Btn label="Insert link" on={openLinkModal}>
@@ -987,6 +1089,79 @@ export function RichEditor({ value, onChange }: Props) {
               <Redo className="h-4 w-4" />
             </Btn>
           </>
+        )}
+        </div>
+
+        {/* Media toolbar — absolutely overlays the formatting toolbar when an image/video is hovered or selected */}
+        {!showHtml && mediaSel && (
+          <div
+            className="absolute inset-0 z-20 flex flex-wrap items-center gap-2 px-2 py-2 bg-muted/30 backdrop-blur"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-xs font-medium text-muted-foreground">Media:</span>
+            {(
+              [
+                { key: "width", label: "W" },
+                { key: "height", label: "H" },
+                { key: "radius", label: "Radius" },
+              ] as const
+            ).map((f) => (
+              <label key={f.key} className="inline-flex items-center gap-1 text-xs">
+                {f.label}
+                <input
+                  value={mediaSel[f.key]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const patch: any = {};
+                    patch[f.key] = /^\d+(\.\d+)?$/.test(v.trim()) ? `${v.trim()}px` : v;
+                    updateMediaStyle(patch);
+                  }}
+                  className="w-20 rounded border border-border bg-background px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </label>
+            ))}
+            <div className="w-px h-5 bg-border mx-1" />
+            <button type="button" title="Move left" onClick={() => nudgeMedia("left")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move up" onClick={() => nudgeMedia("up")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowUp className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move down" onClick={() => nudgeMedia("down")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowDown className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move right" onClick={() => nudgeMedia("right")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              title="Rotate 15°"
+              onClick={() => {
+                const cur = parseFloat(mediaSel.rotate) || 0;
+                updateMediaStyle({ rotate: `${cur + 15}deg` });
+              }}
+              className="p-1 rounded hover:bg-muted/50"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              title="Delete"
+              onClick={deleteSelectedMedia}
+              className="p-1 rounded hover:bg-destructive/20 text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => setMediaSel(null)}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs border border-border hover:bg-muted/50"
+              title="Cancel"
+            >
+              <X className="h-3.5 w-3.5" /> Cancel
+            </button>
+          </div>
         )}
 
         <div className="flex-1" />
@@ -1060,6 +1235,8 @@ export function RichEditor({ value, onChange }: Props) {
           fullscreen && "rich-editor-stage-fullscreen flex min-h-0 flex-1 flex-col overflow-auto",
         )}
         onClick={!showHtml ? handleEditorClick : undefined}
+        onMouseOver={!showHtml ? handleEditorMouseOver : undefined}
+        style={{ background: pageBg }}
       >
         {showHtml ? (
           <textarea
@@ -1080,64 +1257,6 @@ export function RichEditor({ value, onChange }: Props) {
             editor={editor}
             className={cn(fullscreen && "rich-editor-shell-fullscreen")}
           />
-        )}
-
-        {/* Floating media toolbar — appears when an image / video is clicked */}
-        {!showHtml && mediaSel && (
-          <div
-            className="sticky top-2 z-30 mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-popover/95 backdrop-blur p-2 text-xs text-popover-foreground shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span className="font-medium text-muted-foreground">Media:</span>
-            {(
-              [
-                { key: "width", label: "W" },
-                { key: "height", label: "H" },
-                { key: "radius", label: "Radius" },
-              ] as const
-            ).map((f) => (
-              <label key={f.key} className="inline-flex items-center gap-1">
-                {f.label}
-                <input
-                  value={mediaSel[f.key]}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    const patch: any = {};
-                    patch[f.key] = /^\d+(\.\d+)?$/.test(v.trim()) ? `${v.trim()}px` : v;
-                    updateMediaStyle(patch);
-                  }}
-                  className="w-20 rounded border border-border bg-background px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </label>
-            ))}
-            <div className="w-px h-5 bg-border mx-1" />
-            <button type="button" title="Move left" onClick={() => nudgeMedia("left")} className="p-1 rounded hover:bg-muted/50">
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <button type="button" title="Move up" onClick={() => nudgeMedia("up")} className="p-1 rounded hover:bg-muted/50">
-              <ArrowUp className="h-4 w-4" />
-            </button>
-            <button type="button" title="Move down" onClick={() => nudgeMedia("down")} className="p-1 rounded hover:bg-muted/50">
-              <ArrowDown className="h-4 w-4" />
-            </button>
-            <button type="button" title="Move right" onClick={() => nudgeMedia("right")} className="p-1 rounded hover:bg-muted/50">
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              title="Rotate 15°"
-              onClick={() => {
-                const cur = parseFloat(mediaSel.rotate) || 0;
-                updateMediaStyle({ rotate: `${cur + 15}deg` });
-              }}
-              className="p-1 rounded hover:bg-muted/50"
-            >
-              <RotateCw className="h-4 w-4" />
-            </button>
-            <button type="button" onClick={() => setMediaSel(null)} className="ml-auto p-1 rounded hover:bg-muted/50" title="Close">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
         )}
       </div>
 
