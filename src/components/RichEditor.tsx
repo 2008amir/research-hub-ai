@@ -162,6 +162,8 @@ export function RichEditor({ value, onChange }: Props) {
   const [linkLabel, setLinkLabel] = useState("");
   const [uploading, setUploading] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [fontMenuOpen, setFontMenuOpen] = useState(false);
+  const [selectedFont, setSelectedFont] = useState(FONTS[0]);
 
   // Selection style inputs
   const [selStyle, setSelStyle] = useState({ width: "", height: "", lineHeight: "", letterSpacing: "" });
@@ -173,6 +175,7 @@ export function RichEditor({ value, onChange }: Props) {
     extensions: [
       StarterKit, // includes heading 1-6, lists, link, underline, blockquote, code, history…
       TextStyle,
+      TextLayoutStyle,
       Color,
       FontFamily.configure({ types: ["textStyle"] }),
       Highlight.configure({ multicolor: true }),
@@ -216,19 +219,23 @@ export function RichEditor({ value, onChange }: Props) {
 
   const readSelectionStyle = useCallback(() => {
     if (typeof window === "undefined") return;
+    const attrs = editor?.getAttributes("textStyle") || {};
     const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
+    if (!sel || sel.rangeCount === 0) {
+      setSelStyle({ width: attrs.width || "", height: attrs.height || "", lineHeight: attrs.lineHeight || "", letterSpacing: attrs.letterSpacing || "" });
+      return;
+    }
     let node: Node | null = sel.anchorNode;
     while (node && node.nodeType !== 1) node = node.parentNode;
     if (!node) return;
     const cs = window.getComputedStyle(node as Element);
     setSelStyle({
-      width: (node as HTMLElement).style?.width || "",
-      height: (node as HTMLElement).style?.height || "",
-      lineHeight: (node as HTMLElement).style?.lineHeight || cs.lineHeight || "",
-      letterSpacing: (node as HTMLElement).style?.letterSpacing || cs.letterSpacing || "",
+      width: attrs.width || (node as HTMLElement).style?.width || "",
+      height: attrs.height || (node as HTMLElement).style?.height || "",
+      lineHeight: attrs.lineHeight || (node as HTMLElement).style?.lineHeight || cs.lineHeight || "",
+      letterSpacing: attrs.letterSpacing || (node as HTMLElement).style?.letterSpacing || cs.letterSpacing || "",
     });
-  }, []);
+  }, [editor]);
 
   if (!editor) return <div className="glass rounded-xl h-80 animate-pulse" />;
 
