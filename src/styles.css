@@ -191,6 +191,21 @@
 .rich-editor-light h1 { font-size: 2em; font-weight: 700; margin: 0.6em 0 0.4em; }
 .rich-editor-light h2 { font-size: 1.5em; font-weight: 700; margin: 0.6em 0 0.4em; }
 .rich-editor-light h3 { font-size: 1.25em; font-weight: 600; margin: 0.6em 0 0.4em; }
+.rich-editor-stage .tiptap {
+  background: #ffffff;
+  color: #111827;
+}
+.rich-editor-shell-fullscreen {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 100%;
+  background: #ffffff;
+}
+.rich-editor-shell-fullscreen .tiptap {
+  flex: 1 1 auto;
+  min-height: 100%;
+  width: 100%;
+}
 
 /* ---------- Rich content (editor + published article) responsive media ---------- */
 .rich-editor-content img,
