@@ -352,6 +352,18 @@ export function RichEditor({ value, onChange }: Props) {
     }
   }, [fullscreen]);
 
+  // Inject Google Fonts stylesheet once so decorative fonts render in the picker + editor
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "rich-editor-google-fonts";
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = GOOGLE_FONTS_HREF;
+    document.head.appendChild(link);
+  }, []);
+
   const readSelectionStyle = useCallback(() => {
     if (typeof window === "undefined") return;
     const attrs = editor?.getAttributes("textStyle") || {};
