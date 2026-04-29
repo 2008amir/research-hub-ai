@@ -295,6 +295,35 @@ export function RichEditor({ value, onChange }: Props) {
   // Stored ProseMirror selection captured BEFORE the user clicks into a style input
   const savedRangeRef = useRef<{ from: number; to: number } | null>(null);
 
+  // Debounce parent onChange so each keystroke (esp. delete/backspace) doesn't
+  // trigger a re-render of the lazily-loaded editor — keeps typing & deleting smooth.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+  const debounceRef = useRef<number | null>(null);
+  const scheduleParentChange = useCallback((html: string) => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      onChangeRef.current(html);
+    }, 220);
+  }, []);
+  useEffect(
+    () => () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    },
+    [],
+  );
+
+  // Floating toolbar for selected image / video
+  const [mediaSel, setMediaSel] = useState<null | {
+    el: HTMLElement;
+    width: string;
+    height: string;
+    radius: string;
+    rotate: string;
+  }>(null);
+
   const fileImgRef = useRef<HTMLInputElement>(null);
   const fileVidRef = useRef<HTMLInputElement>(null);
 
