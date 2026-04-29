@@ -483,17 +483,17 @@ export function RichEditor({ value, onChange }: Props) {
       )}
 
       {/* Editor / HTML source */}
-      <div className={cn(fullscreen && "flex-1 overflow-auto")}>
+      <div className={cn("rich-editor-stage", fullscreen && "flex min-h-0 flex-1 flex-col overflow-auto bg-white")}>
         {showHtml ? (
           <textarea
             value={htmlBuffer}
             onChange={(e) => { setHtmlBuffer(e.target.value); onChange(e.target.value); }}
             spellCheck={false}
-            className="w-full min-h-[400px] p-4 bg-background/40 font-mono text-xs leading-relaxed text-foreground focus:outline-none resize-y"
+            className={cn("w-full min-h-[400px] p-4 bg-white font-mono text-xs leading-relaxed text-slate-950 focus:outline-none resize-y", fullscreen && "min-h-full flex-1 resize-none")}
             placeholder="<p>Write HTML here…</p>"
           />
         ) : (
-          <EditorContent editor={editor} />
+          <EditorContent editor={editor} className={cn(fullscreen && "rich-editor-shell-fullscreen")} />
         )}
       </div>
 
