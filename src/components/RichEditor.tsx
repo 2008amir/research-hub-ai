@@ -276,15 +276,18 @@ export function RichEditor({ value, onChange }: Props) {
   const [uploading, setUploading] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
+  const [fontSearch, setFontSearch] = useState("");
   const [selectedFont, setSelectedFont] = useState(FONTS[0]);
 
-  // Selection style inputs
+  // Selection style inputs (committed-on-Enter)
   const [selStyle, setSelStyle] = useState({
     width: "",
     height: "",
     lineHeight: "",
     letterSpacing: "",
   });
+  // Stored ProseMirror selection captured BEFORE the user clicks into a style input
+  const savedRangeRef = useRef<{ from: number; to: number } | null>(null);
 
   const fileImgRef = useRef<HTMLInputElement>(null);
   const fileVidRef = useRef<HTMLInputElement>(null);
