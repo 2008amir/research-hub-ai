@@ -721,17 +721,9 @@ export function RichEditor({ value, onChange }: Props) {
     }
   };
 
-  // Click handler on the editor surface: open floating toolbar when an
-  // image / video / iframe is clicked.
-  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    const media = target.closest(
-      "img, video, iframe, .video-embed, [data-youtube-video]",
-    ) as HTMLElement | null;
-    if (!media) {
-      setMediaSel(null);
-      return;
-    }
+  // Open the floating media toolbar (replacing the formatting toolbar)
+  // when an image / video / iframe is hovered or clicked.
+  const openMediaToolbar = (media: HTMLElement) => {
     const inline = media.style;
     const cs = window.getComputedStyle(media);
     setMediaSel({
@@ -741,6 +733,48 @@ export function RichEditor({ value, onChange }: Props) {
       radius: inline.borderRadius || cs.borderRadius || "0px",
       rotate: (inline.transform.match(/rotate\(([-\d.]+)deg\)/) || [, "0"])[1] + "deg",
     });
+  };
+
+  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const media = target.closest(
+      "img, video, iframe, .video-embed, [data-youtube-video]",
+    ) as HTMLElement | null;
+    if (media) openMediaToolbar(media);
+  };
+
+  const handleEditorMouseOver = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (mediaSel) return;
+    const target = e.target as HTMLElement;
+    const media = target.closest(
+      "img, video, iframe, .video-embed, [data-youtube-video]",
+    ) as HTMLElement | null;
+    if (media) openMediaToolbar(media);
+  };
+
+  const deleteSelectedMedia = () => {
+    if (!mediaSel || !editor) return;
+    const el = mediaSel.el;
+    // Use TipTap to find the node at the DOM position and delete it
+    const pos = (editor.view as any).posAtDOM(el, 0);
+    if (typeof pos === "number" && pos >= 0) {
+      const $pos = editor.state.doc.resolve(pos);
+      // walk up to find an ancestor node we can delete
+      const tr = editor.state.tr;
+      const node = editor.state.doc.nodeAt(pos);
+      if (node) {
+        tr.delete(pos, pos + node.nodeSize);
+        editor.view.dispatch(tr);
+      } else {
+        el.remove();
+        const html = editor.getHTML();
+        setHtmlBuffer(html);
+        scheduleParentChange(html);
+      }
+    } else {
+      el.remove();
+    }
+    setMediaSel(null);
   };
 
   const updateMediaStyle = (
