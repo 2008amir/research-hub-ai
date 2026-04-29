@@ -7,7 +7,7 @@ import FontFamily from "@tiptap/extension-font-family";
 import Highlight from "@tiptap/extension-highlight";
 import TextAlign from "@tiptap/extension-text-align";
 import Youtube from "@tiptap/extension-youtube";
-import { Node, mergeAttributes } from "@tiptap/core";
+import { Node as TiptapNode, mergeAttributes } from "@tiptap/core";
 import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3, List, ListOrdered,
@@ -21,7 +21,7 @@ import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 
 /* ---------- Custom video node (handles direct mp4 + vimeo iframe) ---------- */
-const VideoEmbed = Node.create({
+const VideoEmbed = TiptapNode.create({
   name: "videoEmbed",
   group: "block",
   atom: true,
