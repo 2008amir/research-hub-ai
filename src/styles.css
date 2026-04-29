@@ -166,6 +166,32 @@
   .scrollbar-hide { scrollbar-width: none; }
 }
 
+/* ---------- Editor surface (white, like Word) ---------- */
+.rich-editor-light {
+  background: #ffffff;
+  color: #111827;
+}
+.rich-editor-light h1,
+.rich-editor-light h2,
+.rich-editor-light h3,
+.rich-editor-light h4,
+.rich-editor-light h5,
+.rich-editor-light h6,
+.rich-editor-light strong,
+.rich-editor-light blockquote { color: #111827; }
+.rich-editor-light a { color: #2563eb; text-decoration: underline; }
+.rich-editor-light .link-url-below {
+  display: inline-block;
+  font-size: 0.8em;
+  color: #6b7280;
+  word-break: break-all;
+}
+.rich-editor-light ul { list-style: disc; padding-left: 1.5rem; }
+.rich-editor-light ol { list-style: decimal; padding-left: 1.5rem; }
+.rich-editor-light h1 { font-size: 2em; font-weight: 700; margin: 0.6em 0 0.4em; }
+.rich-editor-light h2 { font-size: 1.5em; font-weight: 700; margin: 0.6em 0 0.4em; }
+.rich-editor-light h3 { font-size: 1.25em; font-weight: 600; margin: 0.6em 0 0.4em; }
+
 /* ---------- Rich content (editor + published article) responsive media ---------- */
 .rich-editor-content img,
 .prose img,

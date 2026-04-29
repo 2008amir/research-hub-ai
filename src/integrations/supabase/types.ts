@@ -197,36 +197,42 @@ export type Database = {
       research: {
         Row: {
           author_id: string | null
-          category: Database["public"]["Enums"]["research_category"]
+          category: string
           content_html: string
           created_at: string
           description: string
           header_image_url: string | null
           id: string
+          research_number: string
+          research_type: string
           section: string | null
           title: string
           updated_at: string
         }
         Insert: {
           author_id?: string | null
-          category: Database["public"]["Enums"]["research_category"]
+          category?: string
           content_html?: string
           created_at?: string
           description?: string
           header_image_url?: string | null
           id?: string
+          research_number?: string
+          research_type?: string
           section?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           author_id?: string | null
-          category?: Database["public"]["Enums"]["research_category"]
+          category?: string
           content_html?: string
           created_at?: string
           description?: string
           header_image_url?: string | null
           id?: string
+          research_number?: string
+          research_type?: string
           section?: string | null
           title?: string
           updated_at?: string
