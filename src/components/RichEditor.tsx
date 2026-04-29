@@ -375,6 +375,7 @@ export function RichEditor({ value, onChange }: Props) {
   const [fullscreen, setFullscreen] = useState(false);
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
   const [fontSearch, setFontSearch] = useState("");
+  const [pageBg, setPageBg] = useState<string>("#ffffff");
   const [selectedFont, setSelectedFont] = useState(FONTS[0]);
 
   // Selection style inputs (committed-on-Enter)
