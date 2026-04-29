@@ -2,7 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { AuthScreen } from "@/components/AuthScreen";
-import { AlertTriangle, RefreshCcw } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function RequireAuth({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {
@@ -43,7 +43,14 @@ export function RequireAuth({ children, requireAdmin = false }: { children: Reac
   }
 
   if (loading || !user || (requireAdmin && !rolesLoaded)) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="glass-strong rounded-2xl p-6 max-w-sm text-center">
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+          <h1 className="mt-4 text-lg font-semibold">Opening your panel</h1>
+        </div>
+      </div>
+    );
   }
 
   if (requireAdmin && !isAdmin) return null;
