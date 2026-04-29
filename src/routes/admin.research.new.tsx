@@ -21,7 +21,6 @@ function AddResearch() {
     description: "",
     header_image_url: "",
     research_type: "drugs",
-    research_number: "",
     category: "",
     section: "",
     content_html: "",
