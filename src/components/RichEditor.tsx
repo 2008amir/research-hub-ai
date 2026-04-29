@@ -836,48 +836,41 @@ export function RichEditor({ value, onChange }: Props) {
         </button>
       </div>
 
-      {/* Selection style row */}
+      {/* Selection style row — commit on Enter (or blur) so the editor selection is preserved */}
       {!showHtml && (
         <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-border bg-muted/10 text-xs">
           <span className="text-muted-foreground">Selection:</span>
-          <label className="inline-flex items-center gap-1">
-            W
-            <input
-              value={selStyle.width}
-              onChange={(e) => applyInlineStyle("width", e.target.value)}
-              placeholder="auto"
-              className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </label>
-          <label className="inline-flex items-center gap-1">
-            H
-            <input
-              value={selStyle.height}
-              onChange={(e) => applyInlineStyle("height", e.target.value)}
-              placeholder="auto"
-              className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </label>
-          <label className="inline-flex items-center gap-1">
-            Line
-            <input
-              value={selStyle.lineHeight}
-              onChange={(e) => applyInlineStyle("lineHeight", e.target.value)}
-              placeholder="1.5"
-              className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </label>
-          <label className="inline-flex items-center gap-1">
-            Spacing
-            <input
-              value={selStyle.letterSpacing}
-              onChange={(e) => applyInlineStyle("letterSpacing", e.target.value)}
-              placeholder="0px"
-              className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </label>
+          {(
+            [
+              { key: "width", label: "W", placeholder: "auto" },
+              { key: "height", label: "H", placeholder: "auto" },
+              { key: "lineHeight", label: "Line", placeholder: "1.5" },
+              { key: "letterSpacing", label: "Spacing", placeholder: "0px" },
+            ] as const
+          ).map((field) => (
+            <label key={field.key} className="inline-flex items-center gap-1">
+              {field.label}
+              <input
+                value={selStyle[field.key]}
+                onFocus={captureSelection}
+                onChange={(e) =>
+                  setSelStyle((s) => ({ ...s, [field.key]: e.target.value }))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitInlineStyle(field.key, (e.target as HTMLInputElement).value);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onBlur={(e) => commitInlineStyle(field.key, e.target.value)}
+                placeholder={field.placeholder}
+                className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </label>
+          ))}
           <span className="text-muted-foreground hidden md:inline">
-            Highlight text → adjust values (e.g. 16px, 1.5em, 1.6)
+            Highlight text → type a value → press Enter to apply
           </span>
         </div>
       )}
