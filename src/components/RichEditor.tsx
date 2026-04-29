@@ -9,6 +9,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Youtube from "@tiptap/extension-youtube";
 import { Node as TiptapNode, mergeAttributes } from "@tiptap/core";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3, List, ListOrdered,
   Link as LinkIcon, Image as ImageIcon, Quote, Undo, Redo, AlignLeft, AlignCenter,
@@ -169,6 +170,16 @@ export function RichEditor({ value, onChange }: Props) {
     });
   }, []);
 
+  // Lock body scroll while in fullscreen so nothing else of the site shows behind
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (fullscreen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [fullscreen]);
+
   if (!editor) return <div className="glass rounded-xl h-80 animate-pulse" />;
 
   const uploadToBucket = async (file: File, kind: "image" | "video") => {
@@ -277,18 +288,26 @@ export function RichEditor({ value, onChange }: Props) {
     </button>
   );
 
-  return (
+  const editorTree = (
     <div className={cn(
       "glass rounded-xl overflow-hidden border border-border",
-      fullscreen && "fixed inset-0 z-[150] rounded-none flex flex-col bg-background"
+      fullscreen && "fixed inset-0 z-[2147483647] rounded-none flex flex-col bg-white text-gray-900 border-0"
     )}>
       {/* Top action bar with fullscreen */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-muted/10">
-        <span className="text-xs text-muted-foreground font-medium">Content editor</span>
+      <div className={cn(
+        "flex items-center justify-between gap-2 px-3 py-2 border-b",
+        fullscreen ? "border-gray-200 bg-gray-50" : "border-border bg-muted/10"
+      )}>
+        <span className={cn("text-xs font-medium", fullscreen ? "text-gray-600" : "text-muted-foreground")}>
+          {fullscreen ? "Word processor — full page" : "Content editor"}
+        </span>
         <button
           type="button"
           onClick={() => setFullscreen((v) => !v)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border hover:bg-muted/50 transition"
+          className={cn(
+            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition",
+            fullscreen ? "border-gray-300 hover:bg-gray-100 text-gray-700" : "border-border hover:bg-muted/50"
+          )}
         >
           {fullscreen ? <><Minimize2 className="h-3.5 w-3.5" /> Minimize</> : <><Maximize2 className="h-3.5 w-3.5" /> Full page</>}
         </button>
@@ -540,4 +559,9 @@ export function RichEditor({ value, onChange }: Props) {
       </Modal>
     </div>
   );
+
+  if (fullscreen && typeof document !== "undefined") {
+    return createPortal(editorTree, document.body);
+  }
+  return editorTree;
 }
