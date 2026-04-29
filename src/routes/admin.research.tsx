@@ -1,17 +1,28 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/admin/research")({ component: AdminResearch });
+export const Route = createFileRoute("/admin/research")({ component: AdminResearchLayout });
+
+function AdminResearchLayout() {
+  const location = useLocation();
+  if (location.pathname !== "/admin/research") return <Outlet />;
+  return <AdminResearch />;
+}
 
 function AdminResearch() {
   const qc = useQueryClient();
   const { data: list = [] } = useQuery({
     queryKey: ["admin-research"],
+    staleTime: 60_000,
     queryFn: async () => {
-      const { data } = await supabase.from("research").select("*").order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("research")
+        .select("id, title, description, header_image_url, category, created_at")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
       return data ?? [];
     },
   });

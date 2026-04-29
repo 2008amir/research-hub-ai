@@ -41,7 +41,14 @@ export function AuthScreen() {
   }, [user, isAdmin, rolesLoaded, rolesError, loading, navigate]);
 
   if (user && (loading || !rolesLoaded)) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="glass-strong rounded-2xl p-6 max-w-sm text-center">
+          <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+          <h1 className="mt-4 text-lg font-semibold">Opening your panel</h1>
+        </div>
+      </div>
+    );
   }
 
   if (user && rolesError) {
