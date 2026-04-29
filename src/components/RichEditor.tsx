@@ -9,6 +9,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Youtube from "@tiptap/extension-youtube";
 import { Node as TiptapNode, mergeAttributes } from "@tiptap/core";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3, List, ListOrdered,
   Link as LinkIcon, Image as ImageIcon, Quote, Undo, Redo, AlignLeft, AlignCenter,
@@ -153,6 +154,16 @@ export function RichEditor({ value, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, editor]);
 
+  // Lock body scroll while fullscreen so the standalone editor truly stands alone
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (fullscreen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [fullscreen]);
+
   const readSelectionStyle = useCallback(() => {
     if (typeof window === "undefined") return;
     const sel = window.getSelection();
@@ -277,10 +288,10 @@ export function RichEditor({ value, onChange }: Props) {
     </button>
   );
 
-  return (
+  const editorTree = (
     <div className={cn(
       "glass rounded-xl overflow-hidden border border-border",
-      fullscreen && "fixed inset-0 z-[150] rounded-none flex flex-col bg-background"
+      fullscreen && "fixed inset-0 z-[2147483600] rounded-none flex flex-col bg-background border-0"
     )}>
       {/* Top action bar with fullscreen */}
       <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-muted/10">
@@ -540,4 +551,9 @@ export function RichEditor({ value, onChange }: Props) {
       </Modal>
     </div>
   );
+
+  if (fullscreen && typeof document !== "undefined") {
+    return createPortal(editorTree, document.body);
+  }
+  return editorTree;
 }
