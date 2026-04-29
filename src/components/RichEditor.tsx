@@ -368,7 +368,10 @@ export function RichEditor({ value, onChange }: Props) {
   });
 
   useEffect(() => {
-    if (editor && value !== editor.getHTML() && !showHtml) {
+    // Only sync external value into the editor when it really differs from what
+    // we're locally editing — prevents the debounced parent state from
+    // overwriting the editor mid-keystroke and causing slow/janky deletes.
+    if (editor && value !== editor.getHTML() && value !== htmlBuffer && !showHtml) {
       editor.commands.setContent(value || "", { emitUpdate: false });
       setHtmlBuffer(value || "");
     }
