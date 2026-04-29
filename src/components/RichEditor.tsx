@@ -9,6 +9,7 @@ import TextAlign from "@tiptap/extension-text-align";
 import Youtube from "@tiptap/extension-youtube";
 import { Node as TiptapNode, mergeAttributes } from "@tiptap/core";
 import { useEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   Bold, Italic, Underline as UnderlineIcon, Heading1, Heading2, Heading3, List, ListOrdered,
   Link as LinkIcon, Image as ImageIcon, Quote, Undo, Redo, AlignLeft, AlignCenter,
