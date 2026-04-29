@@ -721,23 +721,41 @@ export function RichEditor({ value, onChange }: Props) {
                 <span className="text-muted-foreground">⌄</span>
               </button>
               {fontMenuOpen && (
-                <div className="absolute left-5 right-0 top-10 z-[2147483601] max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-xl">
-                  {FONTS.map((font) => (
-                    <button
-                      key={font.label}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => chooseFont(font)}
-                      className={cn(
-                        "flex w-full items-center justify-between rounded-sm px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground",
-                        selectedFont.label === font.label && "bg-primary/20 text-primary",
-                      )}
-                      style={{ fontFamily: font.family }}
-                    >
-                      <span>{font.label}</span>
-                      <span className="text-[10px] opacity-70">Aa</span>
-                    </button>
-                  ))}
+                <div className="absolute left-5 right-0 top-10 z-[2147483601] flex max-h-80 flex-col rounded-md border border-border bg-popover text-popover-foreground shadow-xl">
+                  <div className="sticky top-0 z-10 border-b border-border bg-popover p-1.5">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={fontSearch}
+                      onChange={(e) => setFontSearch(e.target.value)}
+                      placeholder="Search fonts…"
+                      className="w-full rounded-sm border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="overflow-y-auto p-1">
+                    {FONTS.filter((f) =>
+                      f.label.toLowerCase().includes(fontSearch.trim().toLowerCase()),
+                    ).map((font) => (
+                      <button
+                        key={font.label}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          chooseFont(font);
+                          setFontSearch("");
+                        }}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-sm px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground",
+                          selectedFont.label === font.label && "bg-primary/20 text-primary",
+                          DECORATIVE_FONT_LABELS.has(font.label) && "text-base",
+                        )}
+                        style={{ fontFamily: font.family }}
+                      >
+                        <span>{font.label}</span>
+                        <span className="text-[10px] opacity-70">Aa Bb</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
