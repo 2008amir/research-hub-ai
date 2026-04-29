@@ -109,7 +109,7 @@ export function RichEditor({ value, onChange }: Props) {
       Link.configure({ openOnClick: false, HTMLAttributes: { class: "text-primary underline" } }),
       Youtube.configure({ controls: true, nocookie: true, HTMLAttributes: { class: "video-embed-youtube" } }),
       VideoEmbed,
-    ],
+    ] as any,
     content: value,
     editorProps: {
       attributes: {
