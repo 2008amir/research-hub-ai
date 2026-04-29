@@ -589,6 +589,109 @@ export function RichEditor({ value, onChange }: Props) {
     scheduleParentChange(html);
   };
 
+  // Apply a background color across every block (paragraph/heading/li) touched
+  // by the current selection — so highlighting from line 1 to line N tints
+  // every line, not just the inline run.
+  const applySectionBackground = (color: string) => {
+    if (!editor) return;
+    const { state } = editor;
+    const { from, to } = state.selection;
+    const tr = state.tr;
+    state.doc.nodesBetween(from, to, (node, pos) => {
+      if (
+        node.type.name === "paragraph" ||
+        node.type.name === "heading" ||
+        node.type.name === "blockquote" ||
+        node.type.name === "listItem"
+      ) {
+        const existing = (node.attrs as any)?.style || "";
+        const cleaned = existing.replace(/background-color\s*:\s*[^;]+;?/gi, "").trim();
+        const nextStyle = `${cleaned}${cleaned && !cleaned.endsWith(";") ? ";" : ""}background-color:${color};`;
+        try {
+          tr.setNodeAttribute(pos, "style" as any, nextStyle);
+        } catch {
+          // node type might not allow a style attr — fall back to inline highlight
+        }
+        return false;
+      }
+      return true;
+    });
+    if (tr.docChanged) {
+      editor.view.dispatch(tr);
+      const html = editor.getHTML();
+      setHtmlBuffer(html);
+      scheduleParentChange(html);
+    } else {
+      // Fallback: inline highlight covers the run
+      (editor.chain().focus() as any).setHighlight({ color }).run();
+    }
+  };
+
+  // Click handler on the editor surface: open floating toolbar when an
+  // image / video / iframe is clicked.
+  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const media = target.closest(
+      "img, video, iframe, .video-embed, [data-youtube-video]",
+    ) as HTMLElement | null;
+    if (!media) {
+      setMediaSel(null);
+      return;
+    }
+    const inline = media.style;
+    const cs = window.getComputedStyle(media);
+    setMediaSel({
+      el: media,
+      width: inline.width || `${Math.round(media.getBoundingClientRect().width)}px`,
+      height: inline.height || `${Math.round(media.getBoundingClientRect().height)}px`,
+      radius: inline.borderRadius || cs.borderRadius || "0px",
+      rotate: (inline.transform.match(/rotate\(([-\d.]+)deg\)/) || [, "0"])[1] + "deg",
+    });
+  };
+
+  const updateMediaStyle = (
+    patch: Partial<{ width: string; height: string; radius: string; rotate: string }>,
+  ) => {
+    setMediaSel((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      const el = next.el;
+      if (patch.width !== undefined) el.style.width = patch.width;
+      if (patch.height !== undefined) el.style.height = patch.height;
+      if (patch.radius !== undefined) el.style.borderRadius = patch.radius;
+      if (patch.rotate !== undefined) {
+        const others = el.style.transform.replace(/rotate\([^)]+\)/g, "").trim();
+        const deg = patch.rotate.endsWith("deg") ? patch.rotate : `${patch.rotate}deg`;
+        el.style.transform = `${others} rotate(${deg})`.trim();
+      }
+      // Persist HTML
+      if (editor) {
+        const html = editor.getHTML();
+        setHtmlBuffer(html);
+        scheduleParentChange(html);
+      }
+      return next;
+    });
+  };
+
+  const nudgeMedia = (dir: "left" | "right" | "up" | "down") => {
+    if (!mediaSel) return;
+    const el = mediaSel.el;
+    const cs = window.getComputedStyle(el);
+    const ml = parseFloat(cs.marginLeft) || 0;
+    const mt = parseFloat(cs.marginTop) || 0;
+    const step = 8;
+    if (dir === "left") el.style.marginLeft = `${ml - step}px`;
+    if (dir === "right") el.style.marginLeft = `${ml + step}px`;
+    if (dir === "up") el.style.marginTop = `${mt - step}px`;
+    if (dir === "down") el.style.marginTop = `${mt + step}px`;
+    if (editor) {
+      const html = editor.getHTML();
+      setHtmlBuffer(html);
+      scheduleParentChange(html);
+    }
+  };
+
   const Btn = ({
     on,
     active,
