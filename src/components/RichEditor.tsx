@@ -559,4 +559,9 @@ export function RichEditor({ value, onChange }: Props) {
       </Modal>
     </div>
   );
+
+  if (fullscreen && typeof document !== "undefined") {
+    return createPortal(editorTree, document.body);
+  }
+  return editorTree;
 }
