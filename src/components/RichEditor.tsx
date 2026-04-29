@@ -291,6 +291,75 @@ const GOOGLE_FONTS_HREF =
     "Permanent+Marker","Bangers","Press+Start+2P",
   ].map((f) => `family=${f}`).join("&") + "&display=swap";
 
+/* ---------- Color picker with transparent swatch ---------- */
+const PRESET_COLORS = [
+  "#000000","#ffffff","#ef4444","#f97316","#eab308","#22c55e",
+  "#06b6d4","#3b82f6","#8b5cf6","#ec4899","#64748b","#7c2d12",
+];
+function ColorPicker({
+  icon,
+  title,
+  onPick,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  onPick: (color: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative inline-flex">
+      <button
+        type="button"
+        title={title}
+        onClick={() => setOpen((o) => !o)}
+        className="inline-flex items-center gap-1 px-1.5 py-1 rounded-md hover:bg-muted/50 border border-transparent"
+      >
+        {icon}
+        <span className="text-[10px] text-muted-foreground">▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-[2147483600]" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full mt-1 z-[2147483601] w-44 rounded-md border border-border bg-popover p-2 shadow-xl">
+            <div className="grid grid-cols-6 gap-1.5">
+              <button
+                type="button"
+                title="Transparent"
+                onClick={() => { onPick("transparent"); setOpen(false); }}
+                className="h-6 w-6 rounded border border-border bg-white relative overflow-hidden"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(45deg,#ccc 25%,transparent 25%),linear-gradient(-45deg,#ccc 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#ccc 75%),linear-gradient(-45deg,transparent 75%,#ccc 75%)",
+                  backgroundSize: "8px 8px",
+                  backgroundPosition: "0 0,0 4px,4px -4px,-4px 0",
+                }}
+              />
+              {PRESET_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => { onPick(c); setOpen(false); }}
+                  className="h-6 w-6 rounded border border-border"
+                  style={{ background: c }}
+                  title={c}
+                />
+              ))}
+            </div>
+            <label className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+              Custom
+              <input
+                type="color"
+                onChange={(e) => { onPick(e.target.value); setOpen(false); }}
+                className="h-6 w-10 rounded cursor-pointer bg-transparent border border-border"
+              />
+            </label>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 type Props = { value: string; onChange: (html: string) => void };
 
 export function RichEditor({ value, onChange }: Props) {
