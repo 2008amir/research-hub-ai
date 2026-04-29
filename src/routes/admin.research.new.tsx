@@ -61,7 +61,6 @@ function AddResearch() {
       header_image_url: form.header_image_url || null,
       category: form.category || form.research_type,
       research_type: form.research_type,
-      research_number: form.research_number,
       section: form.section,
       content_html: form.content_html,
       author_id: user.id,
