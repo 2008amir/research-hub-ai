@@ -17,7 +17,14 @@ function AddResearch() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
-    title: "", description: "", header_image_url: "", category: "drugs", section: "", content_html: "",
+    title: "",
+    description: "",
+    header_image_url: "",
+    research_type: "drugs",
+    research_number: "",
+    category: "",
+    section: "",
+    content_html: "",
   });
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -28,8 +35,16 @@ function AddResearch() {
     setUploading(true);
     const ext = file.name.split(".").pop();
     const path = `${user.id}/${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("research-images").upload(path, file);
-    if (error) { toast.error(error.message); setUploading(false); return; }
+    let lastErr: any = null;
+    for (let i = 0; i < 3; i++) {
+      const { error } = await supabase.storage.from("research-images").upload(path, file);
+      if (!error) { lastErr = null; break; }
+      lastErr = error;
+      const m = (error.message || "").toLowerCase();
+      if (!(m.includes("08p01") || m.includes("database") || m.includes("recovery") || m.includes("connection"))) break;
+      await new Promise((r) => setTimeout(r, 800 * (i + 1)));
+    }
+    if (lastErr) { toast.error(lastErr.message); setUploading(false); return; }
     const { data } = supabase.storage.from("research-images").getPublicUrl(path);
     setForm((f) => ({ ...f, header_image_url: data.publicUrl }));
     setUploading(false);
@@ -45,11 +60,13 @@ function AddResearch() {
       title: form.title,
       description: form.description,
       header_image_url: form.header_image_url || null,
-      category: form.category as any,
+      category: form.category || form.research_type,
+      research_type: form.research_type,
+      research_number: form.research_number,
       section: form.section,
       content_html: form.content_html,
       author_id: user.id,
-    });
+    } as any);
     setSaving(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Research published!");
@@ -75,18 +92,26 @@ function AddResearch() {
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor="title">Title</Label>
-          <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="glass" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="title">Title</Label>
+            <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="glass" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="research_number">Research number</Label>
+            <Input id="research_number" value={form.research_number} onChange={(e) => setForm({ ...form, research_number: e.target.value })} className="glass" placeholder="e.g. R-2026-001" />
+          </div>
         </div>
+
         <div className="space-y-1.5">
           <Label htmlFor="description">Description</Label>
           <Textarea id="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="glass min-h-20" />
         </div>
-        <div className="grid grid-cols-2 gap-3">
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1.5">
-            <Label>Category</Label>
-            <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
+            <Label>Research type</Label>
+            <Select value={form.research_type} onValueChange={(v) => setForm({ ...form, research_type: v })}>
               <SelectTrigger className="glass"><SelectValue /></SelectTrigger>
               <SelectContent className="glass-strong">
                 <SelectItem value="drugs">Drugs</SelectItem>
@@ -94,6 +119,10 @@ function AddResearch() {
                 <SelectItem value="discovery">Discovery</SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="category">Category</Label>
+            <Input id="category" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="glass" placeholder="Type your own" />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="section">Research section</Label>
