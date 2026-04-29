@@ -382,24 +382,38 @@ export function RichEditor({ value, onChange }: Props) {
             <Btn label="Justify" on={() => (editor.chain().focus() as any).setTextAlign("justify").run()} active={editor.isActive({ textAlign: "justify" })}><AlignJustify className="h-4 w-4" /></Btn>
 
             <div className="w-px h-5 bg-border mx-1" />
-            {/* Font family — 40% width on the toolbar row */}
-            <div className="inline-flex items-center gap-1 basis-[40%] min-w-[160px] max-w-[40%]">
+            {/* Font family — custom 40% width menu so every option shows its own style */}
+            <div className="relative inline-flex items-center gap-1 basis-[40%] min-w-[210px] max-w-[40%]">
               <Type className="h-4 w-4 text-muted-foreground shrink-0" />
-              <select
+              <button
+                type="button"
                 aria-label="Font"
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v) editor.chain().focus().setFontFamily(v).run();
-                  else editor.chain().focus().unsetFontFamily().run();
-                }}
-                className="w-full bg-background text-foreground text-xs rounded border border-border px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-primary"
-                defaultValue=""
+                onClick={() => setFontMenuOpen((open) => !open)}
+                className="flex h-9 w-full items-center justify-between rounded-md border border-border bg-background px-3 text-left text-xs text-foreground shadow-sm focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="" style={{ fontFamily: "inherit" }}>Font…</option>
-                {FONTS.map(f => (
-                  <option key={f} value={f} style={{ fontFamily: f }}>{f}</option>
-                ))}
-              </select>
+                <span className="truncate" style={{ fontFamily: selectedFont.family }}>{selectedFont.label}</span>
+                <span className="text-muted-foreground">⌄</span>
+              </button>
+              {fontMenuOpen && (
+                <div className="absolute left-5 right-0 top-10 z-[2147483601] max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-xl">
+                  {FONTS.map((font) => (
+                    <button
+                      key={font.label}
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => chooseFont(font)}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-sm px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground",
+                        selectedFont.label === font.label && "bg-primary/20 text-primary"
+                      )}
+                      style={{ fontFamily: font.family }}
+                    >
+                      <span>{font.label}</span>
+                      <span className="text-[10px] opacity-70">Aa</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Text color */}
