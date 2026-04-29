@@ -133,6 +133,27 @@ const TextLayoutStyle = Extension.create({
   },
 });
 
+/* ---------- Block style extension: lets paragraphs/headings/blockquote/listItem
+   carry an arbitrary inline `style` attribute so we can paint a section
+   background across every line in a multi-line selection. ---------- */
+const BlockStyle = Extension.create({
+  name: "blockStyle",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["paragraph", "heading", "blockquote", "listItem"],
+        attributes: {
+          style: {
+            default: null,
+            parseHTML: (el) => (el as HTMLElement).getAttribute("style") || null,
+            renderHTML: (attrs) => (attrs.style ? { style: attrs.style } : {}),
+          },
+        },
+      },
+    ];
+  },
+});
+
 /* ---------- Helpers ---------- */
 function vimeoEmbed(url: string): string | null {
   const m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
