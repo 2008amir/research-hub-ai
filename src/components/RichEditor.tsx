@@ -1090,6 +1090,79 @@ export function RichEditor({ value, onChange }: Props) {
             </Btn>
           </>
         )}
+        </div>
+
+        {/* Media toolbar — absolutely overlays the formatting toolbar when an image/video is hovered or selected */}
+        {!showHtml && mediaSel && (
+          <div
+            className="absolute inset-0 z-20 flex flex-wrap items-center gap-2 px-2 py-2 bg-muted/30 backdrop-blur"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-xs font-medium text-muted-foreground">Media:</span>
+            {(
+              [
+                { key: "width", label: "W" },
+                { key: "height", label: "H" },
+                { key: "radius", label: "Radius" },
+              ] as const
+            ).map((f) => (
+              <label key={f.key} className="inline-flex items-center gap-1 text-xs">
+                {f.label}
+                <input
+                  value={mediaSel[f.key]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const patch: any = {};
+                    patch[f.key] = /^\d+(\.\d+)?$/.test(v.trim()) ? `${v.trim()}px` : v;
+                    updateMediaStyle(patch);
+                  }}
+                  className="w-20 rounded border border-border bg-background px-1.5 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </label>
+            ))}
+            <div className="w-px h-5 bg-border mx-1" />
+            <button type="button" title="Move left" onClick={() => nudgeMedia("left")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move up" onClick={() => nudgeMedia("up")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowUp className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move down" onClick={() => nudgeMedia("down")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowDown className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move right" onClick={() => nudgeMedia("right")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              title="Rotate 15°"
+              onClick={() => {
+                const cur = parseFloat(mediaSel.rotate) || 0;
+                updateMediaStyle({ rotate: `${cur + 15}deg` });
+              }}
+              className="p-1 rounded hover:bg-muted/50"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              title="Delete"
+              onClick={deleteSelectedMedia}
+              className="p-1 rounded hover:bg-destructive/20 text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            <div className="flex-1" />
+            <button
+              type="button"
+              onClick={() => setMediaSel(null)}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs border border-border hover:bg-muted/50"
+              title="Cancel"
+            >
+              <X className="h-3.5 w-3.5" /> Cancel
+            </button>
+          </div>
+        )}
 
         <div className="flex-1" />
         <button
