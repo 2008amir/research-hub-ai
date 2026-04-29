@@ -25,7 +25,7 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
 };
 
-const ROLE_RETRY_DELAYS = [150, 350];
+const ROLE_RETRY_DELAYS = [120, 280];
 const ADMIN_BOOTSTRAP_USER_ID = "6e0915e6-c64e-482d-883e-0112ee39b560";
 const ADMIN_BOOTSTRAP_EMAIL = "ecomedicsquad@gmail.com";
 
@@ -53,7 +53,7 @@ function profileFromUser(user: User): Profile {
 }
 
 async function loadAuthStateRequest() {
-  return withSupabaseRetry(() => supabase.rpc("get_my_auth_state").single(), 5);
+  return withSupabaseRetry(() => supabase.rpc("get_my_auth_state").single(), 2);
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -95,9 +95,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadUserData = async (currentUser: User) => {
     const requestId = ++loadRequestRef.current;
+    const fallbackAdmin = isBootstrapAdmin(currentUser);
     setRolesLoaded(false);
     setRolesError(null);
-    setIsAdmin(isBootstrapAdmin(currentUser));
+    setProfile(profileFromUser(currentUser));
+    setIsAdmin(fallbackAdmin);
+    if (fallbackAdmin) setRolesLoaded(true);
     await loadAuthStateWithRetry(requestId, currentUser);
   };
 
