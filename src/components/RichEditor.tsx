@@ -170,6 +170,16 @@ export function RichEditor({ value, onChange }: Props) {
     });
   }, []);
 
+  // Lock body scroll while in fullscreen so nothing else of the site shows behind
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (fullscreen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [fullscreen]);
+
   if (!editor) return <div className="glass rounded-xl h-80 animate-pulse" />;
 
   const uploadToBucket = async (file: File, kind: "image" | "video") => {
