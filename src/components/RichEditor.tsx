@@ -1034,9 +1034,10 @@ export function RichEditor({ value, onChange }: Props) {
       {/* Editor / HTML source */}
       <div
         className={cn(
-          "rich-editor-stage",
+          "rich-editor-stage relative",
           fullscreen && "rich-editor-stage-fullscreen flex min-h-0 flex-1 flex-col overflow-auto",
         )}
+        onClick={!showHtml ? handleEditorClick : undefined}
       >
         {showHtml ? (
           <textarea
@@ -1057,6 +1058,64 @@ export function RichEditor({ value, onChange }: Props) {
             editor={editor}
             className={cn(fullscreen && "rich-editor-shell-fullscreen")}
           />
+        )}
+
+        {/* Floating media toolbar — appears when an image / video is clicked */}
+        {!showHtml && mediaSel && (
+          <div
+            className="sticky top-2 z-30 mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-popover/95 backdrop-blur p-2 text-xs text-popover-foreground shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="font-medium text-muted-foreground">Media:</span>
+            {(
+              [
+                { key: "width", label: "W" },
+                { key: "height", label: "H" },
+                { key: "radius", label: "Radius" },
+              ] as const
+            ).map((f) => (
+              <label key={f.key} className="inline-flex items-center gap-1">
+                {f.label}
+                <input
+                  value={mediaSel[f.key]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const patch: any = {};
+                    patch[f.key] = /^\d+(\.\d+)?$/.test(v.trim()) ? `${v.trim()}px` : v;
+                    updateMediaStyle(patch);
+                  }}
+                  className="w-20 rounded border border-border bg-background px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </label>
+            ))}
+            <div className="w-px h-5 bg-border mx-1" />
+            <button type="button" title="Move left" onClick={() => nudgeMedia("left")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move up" onClick={() => nudgeMedia("up")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowUp className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move down" onClick={() => nudgeMedia("down")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowDown className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move right" onClick={() => nudgeMedia("right")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              title="Rotate 15°"
+              onClick={() => {
+                const cur = parseFloat(mediaSel.rotate) || 0;
+                updateMediaStyle({ rotate: `${cur + 15}deg` });
+              }}
+              className="p-1 rounded hover:bg-muted/50"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={() => setMediaSel(null)} className="ml-auto p-1 rounded hover:bg-muted/50" title="Close">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
 
