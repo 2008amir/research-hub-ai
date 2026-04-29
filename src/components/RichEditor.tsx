@@ -885,12 +885,6 @@ export function RichEditor({ value, onChange }: Props) {
           )}
         >
         {!showHtml && (
-          <></>
-        )}
-        {!showHtml && (
-          <>{/* spacer kept for diff stability */}</>
-        )}
-        {!showHtml && (
           <>
             <Btn
               label="Bold"
