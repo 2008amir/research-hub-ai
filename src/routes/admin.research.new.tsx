@@ -21,7 +21,6 @@ function AddResearch() {
     description: "",
     header_image_url: "",
     research_type: "drugs",
-    research_number: "",
     category: "",
     section: "",
     content_html: "",
@@ -62,7 +61,6 @@ function AddResearch() {
       header_image_url: form.header_image_url || null,
       category: form.category || form.research_type,
       research_type: form.research_type,
-      research_number: form.research_number,
       section: form.section,
       content_html: form.content_html,
       author_id: user.id,
@@ -92,15 +90,12 @@ function AddResearch() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="title">Title</Label>
-            <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="glass" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="research_number">Research number</Label>
-            <Input id="research_number" value={form.research_number} onChange={(e) => setForm({ ...form, research_number: e.target.value })} className="glass" placeholder="e.g. R-2026-001" />
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="title">Title</Label>
+          <Input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="glass" />
+          <p className="text-xs text-muted-foreground">
+            A research number will be generated automatically (e.g. <span className="font-mono">ESR-Dr-00001</span>) based on the research type.
+          </p>
         </div>
 
         <div className="space-y-1.5">

@@ -38,6 +38,12 @@ import {
   Type,
   Maximize2,
   Minimize2,
+  PaintBucket,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  ArrowDown,
+  RotateCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -120,6 +126,27 @@ const TextLayoutStyle = Extension.create({
               attributes.letterSpacing
                 ? { style: `letter-spacing: ${attributes.letterSpacing};` }
                 : {},
+          },
+        },
+      },
+    ];
+  },
+});
+
+/* ---------- Block style extension: lets paragraphs/headings/blockquote/listItem
+   carry an arbitrary inline `style` attribute so we can paint a section
+   background across every line in a multi-line selection. ---------- */
+const BlockStyle = Extension.create({
+  name: "blockStyle",
+  addGlobalAttributes() {
+    return [
+      {
+        types: ["paragraph", "heading", "blockquote", "listItem"],
+        attributes: {
+          style: {
+            default: null,
+            parseHTML: (el) => (el as HTMLElement).getAttribute("style") || null,
+            renderHTML: (attrs) => (attrs.style ? { style: attrs.style } : {}),
           },
         },
       },
@@ -289,6 +316,35 @@ export function RichEditor({ value, onChange }: Props) {
   // Stored ProseMirror selection captured BEFORE the user clicks into a style input
   const savedRangeRef = useRef<{ from: number; to: number } | null>(null);
 
+  // Debounce parent onChange so each keystroke (esp. delete/backspace) doesn't
+  // trigger a re-render of the lazily-loaded editor — keeps typing & deleting smooth.
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  }, [onChange]);
+  const debounceRef = useRef<number | null>(null);
+  const scheduleParentChange = useCallback((html: string) => {
+    if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      onChangeRef.current(html);
+    }, 220);
+  }, []);
+  useEffect(
+    () => () => {
+      if (debounceRef.current) window.clearTimeout(debounceRef.current);
+    },
+    [],
+  );
+
+  // Floating toolbar for selected image / video
+  const [mediaSel, setMediaSel] = useState<null | {
+    el: HTMLElement;
+    width: string;
+    height: string;
+    radius: string;
+    rotate: string;
+  }>(null);
+
   const fileImgRef = useRef<HTMLInputElement>(null);
   const fileVidRef = useRef<HTMLInputElement>(null);
 
@@ -297,6 +353,7 @@ export function RichEditor({ value, onChange }: Props) {
       StarterKit, // includes heading 1-6, lists, link, underline, blockquote, code, history…
       TextStyle,
       TextLayoutStyle,
+      BlockStyle,
       Color,
       FontFamily.configure({ types: ["textStyle"] }),
       Highlight.configure({ multicolor: true }),
@@ -325,15 +382,18 @@ export function RichEditor({ value, onChange }: Props) {
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
-      onChange(html);
       setHtmlBuffer(html);
+      scheduleParentChange(html);
     },
     onSelectionUpdate: () => readSelectionStyle(),
     immediatelyRender: false,
   });
 
   useEffect(() => {
-    if (editor && value !== editor.getHTML() && !showHtml) {
+    // Only sync external value into the editor when it really differs from what
+    // we're locally editing — prevents the debounced parent state from
+    // overwriting the editor mid-keystroke and causing slow/janky deletes.
+    if (editor && value !== editor.getHTML() && value !== htmlBuffer && !showHtml) {
       editor.commands.setContent(value || "", { emitUpdate: false });
       setHtmlBuffer(value || "");
     }
@@ -546,8 +606,112 @@ export function RichEditor({ value, onChange }: Props) {
     }
     const attrs = { [prop]: normalized || null } as Record<string, string | null>;
     chain.setMark("textStyle", attrs).removeEmptyTextStyle().run();
-    onChange(editor.getHTML());
-    setHtmlBuffer(editor.getHTML());
+    const html = editor.getHTML();
+    setHtmlBuffer(html);
+    scheduleParentChange(html);
+  };
+
+  // Apply a background color across every block (paragraph/heading/li) touched
+  // by the current selection — so highlighting from line 1 to line N tints
+  // every line, not just the inline run.
+  const applySectionBackground = (color: string) => {
+    if (!editor) return;
+    const { state } = editor;
+    const { from, to } = state.selection;
+    const tr = state.tr;
+    state.doc.nodesBetween(from, to, (node, pos) => {
+      if (
+        node.type.name === "paragraph" ||
+        node.type.name === "heading" ||
+        node.type.name === "blockquote" ||
+        node.type.name === "listItem"
+      ) {
+        const existing = (node.attrs as any)?.style || "";
+        const cleaned = existing.replace(/background-color\s*:\s*[^;]+;?/gi, "").trim();
+        const nextStyle = `${cleaned}${cleaned && !cleaned.endsWith(";") ? ";" : ""}background-color:${color};`;
+        try {
+          tr.setNodeAttribute(pos, "style" as any, nextStyle);
+        } catch {
+          // node type might not allow a style attr — fall back to inline highlight
+        }
+        return false;
+      }
+      return true;
+    });
+    if (tr.docChanged) {
+      editor.view.dispatch(tr);
+      const html = editor.getHTML();
+      setHtmlBuffer(html);
+      scheduleParentChange(html);
+    } else {
+      // Fallback: inline highlight covers the run
+      (editor.chain().focus() as any).setHighlight({ color }).run();
+    }
+  };
+
+  // Click handler on the editor surface: open floating toolbar when an
+  // image / video / iframe is clicked.
+  const handleEditorClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const media = target.closest(
+      "img, video, iframe, .video-embed, [data-youtube-video]",
+    ) as HTMLElement | null;
+    if (!media) {
+      setMediaSel(null);
+      return;
+    }
+    const inline = media.style;
+    const cs = window.getComputedStyle(media);
+    setMediaSel({
+      el: media,
+      width: inline.width || `${Math.round(media.getBoundingClientRect().width)}px`,
+      height: inline.height || `${Math.round(media.getBoundingClientRect().height)}px`,
+      radius: inline.borderRadius || cs.borderRadius || "0px",
+      rotate: (inline.transform.match(/rotate\(([-\d.]+)deg\)/) || [, "0"])[1] + "deg",
+    });
+  };
+
+  const updateMediaStyle = (
+    patch: Partial<{ width: string; height: string; radius: string; rotate: string }>,
+  ) => {
+    setMediaSel((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      const el = next.el;
+      if (patch.width !== undefined) el.style.width = patch.width;
+      if (patch.height !== undefined) el.style.height = patch.height;
+      if (patch.radius !== undefined) el.style.borderRadius = patch.radius;
+      if (patch.rotate !== undefined) {
+        const others = el.style.transform.replace(/rotate\([^)]+\)/g, "").trim();
+        const deg = patch.rotate.endsWith("deg") ? patch.rotate : `${patch.rotate}deg`;
+        el.style.transform = `${others} rotate(${deg})`.trim();
+      }
+      // Persist HTML
+      if (editor) {
+        const html = editor.getHTML();
+        setHtmlBuffer(html);
+        scheduleParentChange(html);
+      }
+      return next;
+    });
+  };
+
+  const nudgeMedia = (dir: "left" | "right" | "up" | "down") => {
+    if (!mediaSel) return;
+    const el = mediaSel.el;
+    const cs = window.getComputedStyle(el);
+    const ml = parseFloat(cs.marginLeft) || 0;
+    const mt = parseFloat(cs.marginTop) || 0;
+    const step = 8;
+    if (dir === "left") el.style.marginLeft = `${ml - step}px`;
+    if (dir === "right") el.style.marginLeft = `${ml + step}px`;
+    if (dir === "up") el.style.marginTop = `${mt - step}px`;
+    if (dir === "down") el.style.marginTop = `${mt + step}px`;
+    if (editor) {
+      const html = editor.getHTML();
+      setHtmlBuffer(html);
+      scheduleParentChange(html);
+    }
   };
 
   const Btn = ({
@@ -790,6 +954,20 @@ export function RichEditor({ value, onChange }: Props) {
               />
             </label>
 
+            {/* Section background color — colors every line in the highlighted range */}
+            <label
+              className="inline-flex items-center gap-1 text-xs cursor-pointer"
+              title="Section background (colors every highlighted line from start to end)"
+            >
+              <PaintBucket className="h-4 w-4 text-muted-foreground" />
+              <input
+                type="color"
+                onChange={(e) => applySectionBackground(e.target.value)}
+                className="h-6 w-6 rounded cursor-pointer bg-transparent border border-border"
+                aria-label="Section background color"
+              />
+            </label>
+
             <div className="w-px h-5 bg-border mx-1" />
             <Btn label="Insert link" on={openLinkModal}>
               <LinkIcon className="h-4 w-4" />
@@ -878,9 +1056,10 @@ export function RichEditor({ value, onChange }: Props) {
       {/* Editor / HTML source */}
       <div
         className={cn(
-          "rich-editor-stage",
+          "rich-editor-stage relative",
           fullscreen && "rich-editor-stage-fullscreen flex min-h-0 flex-1 flex-col overflow-auto",
         )}
+        onClick={!showHtml ? handleEditorClick : undefined}
       >
         {showHtml ? (
           <textarea
@@ -901,6 +1080,64 @@ export function RichEditor({ value, onChange }: Props) {
             editor={editor}
             className={cn(fullscreen && "rich-editor-shell-fullscreen")}
           />
+        )}
+
+        {/* Floating media toolbar — appears when an image / video is clicked */}
+        {!showHtml && mediaSel && (
+          <div
+            className="sticky top-2 z-30 mx-2 mb-2 flex flex-wrap items-center gap-2 rounded-lg border border-border bg-popover/95 backdrop-blur p-2 text-xs text-popover-foreground shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="font-medium text-muted-foreground">Media:</span>
+            {(
+              [
+                { key: "width", label: "W" },
+                { key: "height", label: "H" },
+                { key: "radius", label: "Radius" },
+              ] as const
+            ).map((f) => (
+              <label key={f.key} className="inline-flex items-center gap-1">
+                {f.label}
+                <input
+                  value={mediaSel[f.key]}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    const patch: any = {};
+                    patch[f.key] = /^\d+(\.\d+)?$/.test(v.trim()) ? `${v.trim()}px` : v;
+                    updateMediaStyle(patch);
+                  }}
+                  className="w-20 rounded border border-border bg-background px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </label>
+            ))}
+            <div className="w-px h-5 bg-border mx-1" />
+            <button type="button" title="Move left" onClick={() => nudgeMedia("left")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move up" onClick={() => nudgeMedia("up")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowUp className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move down" onClick={() => nudgeMedia("down")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowDown className="h-4 w-4" />
+            </button>
+            <button type="button" title="Move right" onClick={() => nudgeMedia("right")} className="p-1 rounded hover:bg-muted/50">
+              <ArrowRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              title="Rotate 15°"
+              onClick={() => {
+                const cur = parseFloat(mediaSel.rotate) || 0;
+                updateMediaStyle({ rotate: `${cur + 15}deg` });
+              }}
+              className="p-1 rounded hover:bg-muted/50"
+            >
+              <RotateCw className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={() => setMediaSel(null)} className="ml-auto p-1 rounded hover:bg-muted/50" title="Close">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
 
