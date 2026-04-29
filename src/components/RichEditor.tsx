@@ -288,18 +288,26 @@ export function RichEditor({ value, onChange }: Props) {
     </button>
   );
 
-  return (
+  const editorTree = (
     <div className={cn(
       "glass rounded-xl overflow-hidden border border-border",
-      fullscreen && "fixed inset-0 z-[150] rounded-none flex flex-col bg-background"
+      fullscreen && "fixed inset-0 z-[2147483647] rounded-none flex flex-col bg-white text-gray-900 border-0"
     )}>
       {/* Top action bar with fullscreen */}
-      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border bg-muted/10">
-        <span className="text-xs text-muted-foreground font-medium">Content editor</span>
+      <div className={cn(
+        "flex items-center justify-between gap-2 px-3 py-2 border-b",
+        fullscreen ? "border-gray-200 bg-gray-50" : "border-border bg-muted/10"
+      )}>
+        <span className={cn("text-xs font-medium", fullscreen ? "text-gray-600" : "text-muted-foreground")}>
+          {fullscreen ? "Word processor — full page" : "Content editor"}
+        </span>
         <button
           type="button"
           onClick={() => setFullscreen((v) => !v)}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border border-border hover:bg-muted/50 transition"
+          className={cn(
+            "inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium border transition",
+            fullscreen ? "border-gray-300 hover:bg-gray-100 text-gray-700" : "border-border hover:bg-muted/50"
+          )}
         >
           {fullscreen ? <><Minimize2 className="h-3.5 w-3.5" /> Minimize</> : <><Maximize2 className="h-3.5 w-3.5" /> Full page</>}
         </button>
