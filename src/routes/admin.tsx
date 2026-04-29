@@ -13,7 +13,7 @@ const TABS = [
   { to: "/admin", label: "Overview", exact: true },
   { to: "/admin/users", label: "Users" },
   { to: "/admin/chat", label: "Chat" },
-  { to: "/admin/research", label: "Research" },
+  { to: "/admin/research", label: "Research", exact: true },
   { to: "/admin/research/new", label: "Add Research" },
 ];
 
@@ -54,9 +54,8 @@ import { Users, FileText, Heart, MessageCircle } from "lucide-react";
 function Overview() {
   const { data } = useQuery({
     queryKey: ["admin-stats"],
-    refetchInterval: 10_000,
-    refetchOnWindowFocus: true,
-    refetchOnMount: "always",
+    staleTime: 60_000,
+    refetchInterval: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc("get_admin_stats");
       if (error) throw error;
