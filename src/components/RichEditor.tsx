@@ -383,7 +383,7 @@ export function RichEditor({ value, onChange }: Props) {
 
             <div className="w-px h-5 bg-border mx-1" />
             {/* Font family — custom 40% width menu so every option shows its own style */}
-            <div className="relative inline-flex items-center gap-1 basis-[40%] min-w-[210px] max-w-[40%]">
+            <div className="relative inline-flex w-[40%] min-w-0 max-w-[40%] basis-[40%] items-center gap-1">
               <Type className="h-4 w-4 text-muted-foreground shrink-0" />
               <button
                 type="button"
