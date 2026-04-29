@@ -198,7 +198,8 @@ function Modal({
 }
 
 /* ---------- Fonts ---------- */
-const FONTS = [
+const FONTS: { label: string; family: string }[] = [
+  // Sans / classic
   { label: "Inter", family: "Inter, ui-sans-serif, system-ui, sans-serif" },
   { label: "Arial", family: "Arial, Helvetica, sans-serif" },
   { label: "Arial Black", family: "'Arial Black', Gadget, sans-serif" },
@@ -219,7 +220,47 @@ const FONTS = [
   { label: "Copperplate", family: "Copperplate, Papyrus, fantasy" },
   { label: "Optima", family: "Optima, Candara, sans-serif" },
   { label: "Gill Sans", family: "'Gill Sans', 'Gill Sans MT', Calibri, sans-serif" },
+  // 10 additional standard
+  { label: "Roboto", family: "Roboto, system-ui, sans-serif" },
+  { label: "Open Sans", family: "'Open Sans', system-ui, sans-serif" },
+  { label: "Lato", family: "Lato, system-ui, sans-serif" },
+  { label: "Montserrat", family: "Montserrat, system-ui, sans-serif" },
+  { label: "Poppins", family: "Poppins, system-ui, sans-serif" },
+  { label: "Source Sans Pro", family: "'Source Sans Pro', system-ui, sans-serif" },
+  { label: "Nunito", family: "Nunito, system-ui, sans-serif" },
+  { label: "Raleway", family: "Raleway, system-ui, sans-serif" },
+  { label: "Merriweather", family: "Merriweather, Georgia, serif" },
+  { label: "Playfair Display", family: "'Playfair Display', Georgia, serif" },
+  // 10 decorative / display
+  { label: "Pacifico", family: "Pacifico, 'Brush Script MT', cursive" },
+  { label: "Lobster", family: "Lobster, 'Brush Script MT', cursive" },
+  { label: "Dancing Script", family: "'Dancing Script', 'Brush Script MT', cursive" },
+  { label: "Great Vibes", family: "'Great Vibes', cursive" },
+  { label: "Satisfy", family: "Satisfy, cursive" },
+  { label: "Caveat", family: "Caveat, 'Comic Sans MS', cursive" },
+  { label: "Shadows Into Light", family: "'Shadows Into Light', cursive" },
+  { label: "Permanent Marker", family: "'Permanent Marker', Impact, sans-serif" },
+  { label: "Bangers", family: "Bangers, Impact, sans-serif" },
+  { label: "Press Start 2P", family: "'Press Start 2P', monospace" },
 ];
+
+const DECORATIVE_FONT_LABELS = new Set([
+  "Pacifico","Lobster","Dancing Script","Great Vibes","Satisfy","Caveat",
+  "Shadows Into Light","Permanent Marker","Bangers","Press Start 2P",
+  "Roboto","Open Sans","Lato","Montserrat","Poppins","Source Sans Pro",
+  "Nunito","Raleway","Merriweather","Playfair Display",
+]);
+
+const GOOGLE_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?" +
+  [
+    "Roboto:wght@400;700","Open+Sans:wght@400;700","Lato:wght@400;700",
+    "Montserrat:wght@400;700","Poppins:wght@400;700","Source+Sans+Pro:wght@400;700",
+    "Nunito:wght@400;700","Raleway:wght@400;700","Merriweather:wght@400;700",
+    "Playfair+Display:wght@400;700","Pacifico","Lobster","Dancing+Script:wght@400;700",
+    "Great+Vibes","Satisfy","Caveat:wght@400;700","Shadows+Into+Light",
+    "Permanent+Marker","Bangers","Press+Start+2P",
+  ].map((f) => `family=${f}`).join("&") + "&display=swap";
 
 type Props = { value: string; onChange: (html: string) => void };
 
@@ -235,15 +276,18 @@ export function RichEditor({ value, onChange }: Props) {
   const [uploading, setUploading] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [fontMenuOpen, setFontMenuOpen] = useState(false);
+  const [fontSearch, setFontSearch] = useState("");
   const [selectedFont, setSelectedFont] = useState(FONTS[0]);
 
-  // Selection style inputs
+  // Selection style inputs (committed-on-Enter)
   const [selStyle, setSelStyle] = useState({
     width: "",
     height: "",
     lineHeight: "",
     letterSpacing: "",
   });
+  // Stored ProseMirror selection captured BEFORE the user clicks into a style input
+  const savedRangeRef = useRef<{ from: number; to: number } | null>(null);
 
   const fileImgRef = useRef<HTMLInputElement>(null);
   const fileVidRef = useRef<HTMLInputElement>(null);
@@ -307,6 +351,18 @@ export function RichEditor({ value, onChange }: Props) {
       };
     }
   }, [fullscreen]);
+
+  // Inject Google Fonts stylesheet once so decorative fonts render in the picker + editor
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const id = "rich-editor-google-fonts";
+    if (document.getElementById(id)) return;
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = GOOGLE_FONTS_HREF;
+    document.head.appendChild(link);
+  }, []);
 
   const readSelectionStyle = useCallback(() => {
     if (typeof window === "undefined") return;
@@ -468,15 +524,28 @@ export function RichEditor({ value, onChange }: Props) {
     editor.chain().focus().setFontFamily(font.family).run();
   };
 
-  // Apply inline style to the saved editor selection, not the input focus selection.
-  const applyInlineStyle = (
+  // Capture current editor selection so it survives focusing the W/H/Line/Spacing inputs.
+  const captureSelection = () => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    savedRangeRef.current = { from, to };
+  };
+
+  // Commit a style value to the saved editor selection. Called only on Enter or blur.
+  const commitInlineStyle = (
     prop: "lineHeight" | "letterSpacing" | "width" | "height",
     val: string,
   ) => {
     const normalized = normalizeStyleValue(prop, val);
-    setSelStyle((s) => ({ ...s, [prop]: val }));
+    const range = savedRangeRef.current;
+    const chain = editor.chain();
+    if (range && range.from !== range.to) {
+      chain.setTextSelection(range);
+    } else {
+      chain.focus();
+    }
     const attrs = { [prop]: normalized || null } as Record<string, string | null>;
-    editor.chain().focus().setMark("textStyle", attrs).removeEmptyTextStyle().run();
+    chain.setMark("textStyle", attrs).removeEmptyTextStyle().run();
     onChange(editor.getHTML());
     setHtmlBuffer(editor.getHTML());
   };
@@ -652,23 +721,41 @@ export function RichEditor({ value, onChange }: Props) {
                 <span className="text-muted-foreground">⌄</span>
               </button>
               {fontMenuOpen && (
-                <div className="absolute left-5 right-0 top-10 z-[2147483601] max-h-72 overflow-y-auto rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-xl">
-                  {FONTS.map((font) => (
-                    <button
-                      key={font.label}
-                      type="button"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => chooseFont(font)}
-                      className={cn(
-                        "flex w-full items-center justify-between rounded-sm px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground",
-                        selectedFont.label === font.label && "bg-primary/20 text-primary",
-                      )}
-                      style={{ fontFamily: font.family }}
-                    >
-                      <span>{font.label}</span>
-                      <span className="text-[10px] opacity-70">Aa</span>
-                    </button>
-                  ))}
+                <div className="absolute left-5 right-0 top-10 z-[2147483601] flex max-h-80 flex-col rounded-md border border-border bg-popover text-popover-foreground shadow-xl">
+                  <div className="sticky top-0 z-10 border-b border-border bg-popover p-1.5">
+                    <input
+                      type="text"
+                      autoFocus
+                      value={fontSearch}
+                      onChange={(e) => setFontSearch(e.target.value)}
+                      placeholder="Search fonts…"
+                      className="w-full rounded-sm border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                  </div>
+                  <div className="overflow-y-auto p-1">
+                    {FONTS.filter((f) =>
+                      f.label.toLowerCase().includes(fontSearch.trim().toLowerCase()),
+                    ).map((font) => (
+                      <button
+                        key={font.label}
+                        type="button"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => {
+                          chooseFont(font);
+                          setFontSearch("");
+                        }}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-sm px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground",
+                          selectedFont.label === font.label && "bg-primary/20 text-primary",
+                          DECORATIVE_FONT_LABELS.has(font.label) && "text-base",
+                        )}
+                        style={{ fontFamily: font.family }}
+                      >
+                        <span>{font.label}</span>
+                        <span className="text-[10px] opacity-70">Aa Bb</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -749,48 +836,41 @@ export function RichEditor({ value, onChange }: Props) {
         </button>
       </div>
 
-      {/* Selection style row */}
+      {/* Selection style row — commit on Enter (or blur) so the editor selection is preserved */}
       {!showHtml && (
         <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 border-b border-border bg-muted/10 text-xs">
           <span className="text-muted-foreground">Selection:</span>
-          <label className="inline-flex items-center gap-1">
-            W
-            <input
-              value={selStyle.width}
-              onChange={(e) => applyInlineStyle("width", e.target.value)}
-              placeholder="auto"
-              className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </label>
-          <label className="inline-flex items-center gap-1">
-            H
-            <input
-              value={selStyle.height}
-              onChange={(e) => applyInlineStyle("height", e.target.value)}
-              placeholder="auto"
-              className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </label>
-          <label className="inline-flex items-center gap-1">
-            Line
-            <input
-              value={selStyle.lineHeight}
-              onChange={(e) => applyInlineStyle("lineHeight", e.target.value)}
-              placeholder="1.5"
-              className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </label>
-          <label className="inline-flex items-center gap-1">
-            Spacing
-            <input
-              value={selStyle.letterSpacing}
-              onChange={(e) => applyInlineStyle("letterSpacing", e.target.value)}
-              placeholder="0px"
-              className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </label>
+          {(
+            [
+              { key: "width", label: "W", placeholder: "auto" },
+              { key: "height", label: "H", placeholder: "auto" },
+              { key: "lineHeight", label: "Line", placeholder: "1.5" },
+              { key: "letterSpacing", label: "Spacing", placeholder: "0px" },
+            ] as const
+          ).map((field) => (
+            <label key={field.key} className="inline-flex items-center gap-1">
+              {field.label}
+              <input
+                value={selStyle[field.key]}
+                onFocus={captureSelection}
+                onChange={(e) =>
+                  setSelStyle((s) => ({ ...s, [field.key]: e.target.value }))
+                }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    commitInlineStyle(field.key, (e.target as HTMLInputElement).value);
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+                onBlur={(e) => commitInlineStyle(field.key, e.target.value)}
+                placeholder={field.placeholder}
+                className="w-20 bg-background border border-border rounded px-1.5 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </label>
+          ))}
           <span className="text-muted-foreground hidden md:inline">
-            Highlight text → adjust values (e.g. 16px, 1.5em, 1.6)
+            Highlight text → type a value → press Enter to apply
           </span>
         </div>
       )}
