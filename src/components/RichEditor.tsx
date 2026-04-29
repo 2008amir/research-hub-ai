@@ -524,15 +524,28 @@ export function RichEditor({ value, onChange }: Props) {
     editor.chain().focus().setFontFamily(font.family).run();
   };
 
-  // Apply inline style to the saved editor selection, not the input focus selection.
-  const applyInlineStyle = (
+  // Capture current editor selection so it survives focusing the W/H/Line/Spacing inputs.
+  const captureSelection = () => {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    savedRangeRef.current = { from, to };
+  };
+
+  // Commit a style value to the saved editor selection. Called only on Enter or blur.
+  const commitInlineStyle = (
     prop: "lineHeight" | "letterSpacing" | "width" | "height",
     val: string,
   ) => {
     const normalized = normalizeStyleValue(prop, val);
-    setSelStyle((s) => ({ ...s, [prop]: val }));
+    const range = savedRangeRef.current;
+    const chain = editor.chain();
+    if (range && range.from !== range.to) {
+      chain.setTextSelection(range);
+    } else {
+      chain.focus();
+    }
     const attrs = { [prop]: normalized || null } as Record<string, string | null>;
-    editor.chain().focus().setMark("textStyle", attrs).removeEmptyTextStyle().run();
+    chain.setMark("textStyle", attrs).removeEmptyTextStyle().run();
     onChange(editor.getHTML());
     setHtmlBuffer(editor.getHTML());
   };
