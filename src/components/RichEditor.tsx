@@ -198,7 +198,8 @@ function Modal({
 }
 
 /* ---------- Fonts ---------- */
-const FONTS = [
+const FONTS: { label: string; family: string }[] = [
+  // Sans / classic
   { label: "Inter", family: "Inter, ui-sans-serif, system-ui, sans-serif" },
   { label: "Arial", family: "Arial, Helvetica, sans-serif" },
   { label: "Arial Black", family: "'Arial Black', Gadget, sans-serif" },
@@ -219,7 +220,47 @@ const FONTS = [
   { label: "Copperplate", family: "Copperplate, Papyrus, fantasy" },
   { label: "Optima", family: "Optima, Candara, sans-serif" },
   { label: "Gill Sans", family: "'Gill Sans', 'Gill Sans MT', Calibri, sans-serif" },
+  // 10 additional standard
+  { label: "Roboto", family: "Roboto, system-ui, sans-serif" },
+  { label: "Open Sans", family: "'Open Sans', system-ui, sans-serif" },
+  { label: "Lato", family: "Lato, system-ui, sans-serif" },
+  { label: "Montserrat", family: "Montserrat, system-ui, sans-serif" },
+  { label: "Poppins", family: "Poppins, system-ui, sans-serif" },
+  { label: "Source Sans Pro", family: "'Source Sans Pro', system-ui, sans-serif" },
+  { label: "Nunito", family: "Nunito, system-ui, sans-serif" },
+  { label: "Raleway", family: "Raleway, system-ui, sans-serif" },
+  { label: "Merriweather", family: "Merriweather, Georgia, serif" },
+  { label: "Playfair Display", family: "'Playfair Display', Georgia, serif" },
+  // 10 decorative / display
+  { label: "Pacifico", family: "Pacifico, 'Brush Script MT', cursive" },
+  { label: "Lobster", family: "Lobster, 'Brush Script MT', cursive" },
+  { label: "Dancing Script", family: "'Dancing Script', 'Brush Script MT', cursive" },
+  { label: "Great Vibes", family: "'Great Vibes', cursive" },
+  { label: "Satisfy", family: "Satisfy, cursive" },
+  { label: "Caveat", family: "Caveat, 'Comic Sans MS', cursive" },
+  { label: "Shadows Into Light", family: "'Shadows Into Light', cursive" },
+  { label: "Permanent Marker", family: "'Permanent Marker', Impact, sans-serif" },
+  { label: "Bangers", family: "Bangers, Impact, sans-serif" },
+  { label: "Press Start 2P", family: "'Press Start 2P', monospace" },
 ];
+
+const DECORATIVE_FONT_LABELS = new Set([
+  "Pacifico","Lobster","Dancing Script","Great Vibes","Satisfy","Caveat",
+  "Shadows Into Light","Permanent Marker","Bangers","Press Start 2P",
+  "Roboto","Open Sans","Lato","Montserrat","Poppins","Source Sans Pro",
+  "Nunito","Raleway","Merriweather","Playfair Display",
+]);
+
+const GOOGLE_FONTS_HREF =
+  "https://fonts.googleapis.com/css2?" +
+  [
+    "Roboto:wght@400;700","Open+Sans:wght@400;700","Lato:wght@400;700",
+    "Montserrat:wght@400;700","Poppins:wght@400;700","Source+Sans+Pro:wght@400;700",
+    "Nunito:wght@400;700","Raleway:wght@400;700","Merriweather:wght@400;700",
+    "Playfair+Display:wght@400;700","Pacifico","Lobster","Dancing+Script:wght@400;700",
+    "Great+Vibes","Satisfy","Caveat:wght@400;700","Shadows+Into+Light",
+    "Permanent+Marker","Bangers","Press+Start+2P",
+  ].map((f) => `family=${f}`).join("&") + "&display=swap";
 
 type Props = { value: string; onChange: (html: string) => void };
 
